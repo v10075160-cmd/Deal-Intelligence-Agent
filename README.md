@@ -8,6 +8,35 @@ See [`CONTRACT.md`](CONTRACT.md) for endpoint contracts and data formats, and `d
 
 ---
 
+## Architecture & Demo
+
+### System Architecture
+![Architecture](docs/architecture.png)
+
+### Rehearsed 60-Second Demo
+Review [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) for a rehearsed, 60-second walkthrough that proves the value of persistent memory within 15 seconds:
+1. **The Problem:** Rep joins Call 5 cold. With Memory OFF, the brief is generic and blind to past commitments.
+2. **Memory ON:** With Hindsight active, the agent cites David's SAP latency objection from Call 1, an unfulfilled SOC 2 deliverable from Call 2, and Sarah's $150k board sign-off threshold from Call 4.
+3. **Live Call Ingestion:** Alice joins Call 5, provides the SOC 2 report, and structures $45,000 quarterly amortization to fit under Sarah's threshold. Call 5 is retained live into memory.
+4. **Deal Won & Playbook Update:** Deal is closed as won. The winning objection-handling strategy is retained into the global organizational Playbook bank.
+5. **Cross-Deal Learning:** A new deal brief cites the newly learned playbook strategy under *"Learned From Past Deals"*.
+
+### Visual Walkthrough & Screenshots
+
+#### 1. Side-by-Side Comparison: Memory OFF vs Memory ON
+![Brief ON vs OFF](docs/screenshots/brief_on_vs_off.png)
+
+#### 2. Recalled Facts & Stakeholder Stance Mapping
+![Recalled Facts Panel](docs/screenshots/recalled_facts_panel.png)
+
+#### 3. Global Playbook Knowledge Bank
+![Playbook Bank](docs/screenshots/playbook_page.png)
+
+#### 4. The Agent Learning Curve Across Calls
+![Learning Curve](docs/screenshots/learning_curve.png)
+
+---
+
 ## How Hindsight Memory is Used
 
 The agent leverages Hindsight's hierarchical long-term memory engine to overcome the limitations of flat context windows. Hindsight provides active knowledge graphs, temporal recall, entity tracking, and cross-session reflection:
@@ -80,7 +109,11 @@ Run Uvicorn from the `backend/` directory:
 cd backend
 uvicorn main:app --reload --port 8000
 ```
-The API documentation is available at `http://localhost:8000/docs`.
+> **Tip for Local Prototyping:** If running without external API keys, you can run the contract stub server instead:
+> ```bash
+> cd backend
+> uvicorn main_stub:app --reload --port 8000
+> ```
 
 ### 5. Seed Initial Deals (Run Once)
 In a separate terminal or HTTP client, trigger the seed endpoint:
@@ -94,3 +127,56 @@ To verify LLM fallbacks, defensive JSON parsing, and empty-recall edge cases:
 ```bash
 pytest -v backend/test_backend.py
 ```
+
+---
+
+## Run the Frontend
+
+Follow these steps for a fresh clone to launch the interactive Streamlit dashboard:
+
+### 1. Create and Activate a Virtual Environment
+```bash
+# macOS/Linux:
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Windows:
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+### 2. Install Dependencies
+```bash
+pip install -r frontend/requirements.txt
+```
+
+### 3. Configure Environment Variables
+Copy `frontend/.env.example` to `frontend/.env`:
+```bash
+# macOS/Linux:
+cp frontend/.env.example frontend/.env
+
+# Windows (Command Prompt):
+copy frontend\.env.example frontend\.env
+
+# Windows (PowerShell):
+Copy-Item frontend\.env.example frontend\.env
+```
+The default configuration connects to the local backend:
+```env
+API_BASE=http://localhost:8000
+```
+
+### 4. Start the Streamlit Application
+> **Important:** The backend server (`backend/main.py` or `backend/main_stub.py`) must be running before launching the frontend.
+
+From the `frontend/` directory, start Streamlit:
+```bash
+cd frontend
+streamlit run app.py
+```
+The application will open automatically in your browser at `http://localhost:8501`.
+
+### 5. Seeding Demo Data (Run Once)
+In the Streamlit sidebar, click **"🌱 Seed Demo Data"**.  
+*Seeding populates the Hindsight account whose keys the backend uses, initializing isolated deal memory banks and the global Playbook bank from `data/deals.json`. This should be executed once per environment.*
