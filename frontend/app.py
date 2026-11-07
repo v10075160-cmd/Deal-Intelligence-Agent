@@ -1,18 +1,23 @@
 """Streamlit application for Deal Intelligence Agent.
 
-Frontend dashboard strictly communicating with the backend via frontend/api.py.
-Handles all empty and error states:
-- Backend offline or unreachable
-- Empty deals lists
-- HTTP error responses
-- Loading states with spinners
+Frontend dashboard communicating strictly with the backend via frontend/api.py.
+Features:
+- Sidebar deal selector with pipeline stats, health indicator, and seed trigger
+- Pre-Call Brief with prominent MEMORY ON/OFF toggle
+- 'What the agent remembered' recalled-facts panel (active only when memory is ON)
+- Stakeholder map with visual stance chips
+- Open objections and commitments tracking cards
+- Side-by-side comparison view (Memory OFF vs Memory ON)
+- Personalized follow-up email generator with Memory toggle
+- Learning curve chart showing intelligence progression across Calls 1, 3, and 5
+- Full call timeline and new call transcript logging form
 """
 
 from datetime import date
 import json
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import pandas as pd
 import streamlit as st
 
 import api
@@ -25,7 +30,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS for clean enterprise design
+# Custom CSS for executive enterprise look
 st.markdown(
     """
     <style>
@@ -33,44 +38,79 @@ st.markdown(
         background-color: #f8f9fa;
         border: 1px solid #e9ecef;
         border-radius: 8px;
-        padding: 16px;
+        padding: 14px 16px;
         margin-bottom: 12px;
     }
-    .badge-won {
+    .stance-chip {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .stance-champion {
         background-color: #d1e7dd;
         color: #0f5132;
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 0.82rem;
-        font-weight: 600;
+        border: 1px solid #badbcc;
     }
-    .badge-lost {
+    .stance-cautious {
+        background-color: #fff3cd;
+        color: #664d03;
+        border: 1px solid #ffecb5;
+    }
+    .stance-skeptic {
         background-color: #f8d7da;
         color: #842029;
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 0.82rem;
-        font-weight: 600;
+        border: 1px solid #f5c2c7;
     }
-    .badge-open {
-        background-color: #cff4fc;
-        color: #055160;
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 0.82rem;
-        font-weight: 600;
+    .stance-neutral {
+        background-color: #e2e3e5;
+        color: #41464b;
+        border: 1px solid #d3d6d8;
     }
-    .timeline-item {
-        border-left: 3px solid #0d6efd;
-        padding-left: 16px;
-        margin-bottom: 20px;
-    }
-    .recalled-card {
-        background-color: #f0f7ff;
+    .recalled-box {
+        background-color: #e8f4fd;
         border-left: 4px solid #0d6efd;
-        padding: 10px 14px;
+        border-radius: 6px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+    }
+    .call-tag {
+        background-color: #0d6efd;
+        color: white;
+        padding: 2px 7px;
         border-radius: 4px;
-        margin-bottom: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-right: 6px;
+    }
+    .memory-badge-on {
+        background-color: #d1e7dd;
+        color: #0f5132;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        display: inline-block;
+        margin-bottom: 12px;
+    }
+    .memory-badge-off {
+        background-color: #f8d7da;
+        color: #842029;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        display: inline-block;
+        margin-bottom: 12px;
+    }
+    .email-container {
+        background-color: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.6;
     }
     </style>
     """,
@@ -78,10 +118,9 @@ st.markdown(
 )
 
 
-# Helper functions for local dataset caching (for transcripts and timeline)
 @st.cache_data
 def load_local_seed_calls() -> Dict[str, List[Dict[str, Any]]]:
-    """Load transcripts from data/deals.json keyed by deal id."""
+    """Load call transcripts from data/deals.json keyed by deal ID."""
     deals_file = Path(__file__).resolve().parent.parent / "data" / "deals.json"
     if not deals_file.exists():
         return {}
@@ -108,7 +147,21 @@ def get_demo_call_5_data() -> Optional[Dict[str, Any]]:
         return None
 
 
-# Initialize session state stores
+def render_stance_chip(stance: str) -> str:
+    """Return HTML for a styled stance chip."""
+    s_lower = stance.lower()
+    if "champion" in s_lower:
+        css = "stance-champion"
+    elif "cautious" in s_lower or "evaluating" in s_lower:
+        css = "stance-cautious"
+    elif "skeptic" in s_lower or "blocker" in s_lower or "veto" in s_lower:
+        css = "stance-skeptic"
+    else:
+        css = "stance-neutral"
+    return f'<span class="stance-chip {css}">{stance}</span>'
+
+
+# Initialize session state
 if "local_calls" not in st.session_state:
     st.session_state.local_calls = load_local_seed_calls()
 
@@ -118,17 +171,17 @@ if "selected_deal_id" not in st.session_state:
 if "brief_cache" not in st.session_state:
     st.session_state.brief_cache = {}
 
-if "error_message" not in st.session_state:
-    st.session_state.error_message = None
+if "global_memory_toggle" not in st.session_state:
+    st.session_state.global_memory_toggle = "ON"
 
 
 # --- SIDEBAR ---
 with st.sidebar:
     st.title("💼 Deal Intelligence")
-    st.caption("Sales memory powered by Hindsight Cloud")
+    st.caption("Sales intelligence with Hindsight long-term memory")
     st.markdown("---")
 
-    # Backend health indicator
+    # Backend Health Check
     is_healthy = api.check_health()
     if is_healthy:
         st.success("🟢 Backend Online", icon=None)
@@ -136,7 +189,7 @@ with st.sidebar:
         st.error(f"🔴 Backend Offline (`{api.API_BASE}`)", icon=None)
         st.info("Start `backend/main_stub.py` or `backend/main.py` on port 8000.")
 
-    # Seed demo data button
+    # Seed Demo Data Trigger
     st.markdown("### Data Management")
     if st.button("🌱 Seed Demo Data", use_container_width=True, disabled=not is_healthy):
         with st.spinner("Seeding demo deals and calls into backend..."):
@@ -144,7 +197,7 @@ with st.sidebar:
                 res = api.seed_demo_data()
                 st.session_state.local_calls = load_local_seed_calls()
                 st.toast(
-                    f"Seeded successfully: {res.get('deals_loaded', 0)} deals, {res.get('calls_retained', 0)} calls."
+                    f"Seeded: {res.get('deals_loaded', 0)} deals, {res.get('calls_retained', 0)} calls."
                 )
                 st.rerun()
             except api.DealAgentAPIException as err:
@@ -164,9 +217,8 @@ with st.sidebar:
         st.caption("Connect backend to load deals.")
 
     if not deals and is_healthy:
-        st.info("No deals available yet. Click **Seed Demo Data** above to populate.")
+        st.info("No deals available yet. Click **Seed Demo Data** above.")
 
-    # Deal Selector
     deal_options = {}
     default_index = 0
     for idx, d in enumerate(deals):
@@ -175,24 +227,26 @@ with st.sidebar:
         val = d.get("value", 0)
         outcome = d.get("outcome")
         badge = "WON" if outcome == "won" else ("LOST" if outcome == "lost" else "OPEN")
-        label = f"{comp} (${val:,.0f}) [{badge}]"
-        deal_options[d_id] = label
+        deal_options[d_id] = f"{comp} (${val:,.0f}) [{badge}]"
         if st.session_state.selected_deal_id == d_id:
             default_index = idx
 
     selected_deal = None
     if deal_options:
         selected_id = st.selectbox(
-            "Select a deal to inspect:",
+            "Select deal:",
             options=list(deal_options.keys()),
             format_func=lambda x: deal_options[x],
             index=default_index,
         )
         st.session_state.selected_deal_id = selected_id
-        selected_deal = next((d for d in deals if (d.get("deal_id") or d.get("id")) == selected_id), None)
+        selected_deal = next(
+            (d for d in deals if (d.get("deal_id") or d.get("id")) == selected_id),
+            None,
+        )
 
     st.markdown("---")
-    st.caption("Deal Intelligence Agent | Built against CONTRACT.md")
+    st.caption("Built strictly against CONTRACT.md")
 
 
 # --- MAIN AREA ---
@@ -203,81 +257,155 @@ if not is_healthy:
     )
     st.markdown(
         """
-        **To start the stub backend:**
+        **To run the stub server:**
         ```bash
         cd backend
         uvicorn main_stub:app --reload --port 8000
         ```
-        Once running, refresh this page or click **Check Health**.
         """
     )
-    if st.button("🔄 Retry Connection"):
+    if st.button("🔄 Check Connection"):
         st.rerun()
     st.stop()
 
 if not selected_deal:
-    st.info("👋 Welcome! Please select a deal from the sidebar or click **Seed Demo Data** to get started.")
+    st.info("👋 Select a deal from the sidebar or click **Seed Demo Data** to populate accounts.")
     st.stop()
 
-
-# Render Selected Deal Overview
+# Header Information for Selected Deal
 deal_id = selected_deal.get("deal_id") or selected_deal.get("id")
 company = selected_deal.get("company", "Deal Overview")
 value = selected_deal.get("value", 0)
 stage = selected_deal.get("stage", "In Progress")
 outcome = selected_deal.get("outcome")
-calls_count = selected_deal.get("calls_count", 0)
+calls = st.session_state.local_calls.get(deal_id, [])
 
 col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
 with col1:
     st.subheader(f"🏢 {company}")
-    st.caption(f"Deal ID: `{deal_id}`")
+    st.caption(f"Account ID: `{deal_id}`")
 with col2:
-    st.metric("Deal Value", f"${value:,.0f}")
+    st.metric("Contract Value", f"${value:,.0f}")
 with col3:
     st.metric("Pipeline Stage", stage)
 with col4:
-    outcome_label = "Closed Won" if outcome == "won" else ("Closed Lost" if outcome == "lost" else "Active / Open")
-    st.metric("Outcome", outcome_label)
+    outcome_label = (
+        "Closed Won" if outcome == "won" else ("Closed Lost" if outcome == "lost" else "Active / Open")
+    )
+    st.metric("Deal Outcome", outcome_label)
 
 st.markdown("---")
 
-# Retrieve calls for selected deal
-calls = st.session_state.local_calls.get(deal_id, [])
-
-# Tabs for Main Deal Workflow
-tab_brief, tab_timeline, tab_add_call = st.tabs(
-    ["⚡ Pre-Call Brief", f"📞 Call Timeline ({len(calls)})", "➕ Log New Call"]
+# Navigation Tabs
+tab_brief, tab_compare, tab_followup, tab_learning, tab_timeline, tab_add_call = st.tabs(
+    [
+        "⚡ Pre-Call Brief",
+        "⚖️ Compare (ON vs OFF)",
+        "✉️ Follow-Up Email",
+        "📈 Learning Curve",
+        f"📞 Call Timeline ({len(calls)})",
+        "➕ Log New Call",
+    ]
 )
 
-# --- TAB 1: PRE-CALL BRIEF ---
+
+# --- TAB 1: PRE-CALL BRIEF (CORE MEMORY STORY) ---
 with tab_brief:
-    st.markdown("### Pre-Call Executive Briefing")
-    st.write("Generate real-time intelligence for the rep before joining the next call.")
+    st.markdown("### Pre-Call Intelligence Briefing")
+    st.write("Generates actionable intelligence to equip the sales executive before entering the next call.")
 
-    col_btn, col_info = st.columns([1, 3])
-    with col_btn:
-        brief_clicked = st.button("⚡ Brief Me", type="primary", use_container_width=True)
+    # Prominent MEMORY ON / OFF Toggle
+    st.markdown("#### Agent Memory Mode")
+    toggle_col1, toggle_col2 = st.columns([2, 3])
+    with toggle_col1:
+        memory_mode = st.radio(
+            "Memory Setting",
+            options=["ON", "OFF"],
+            horizontal=True,
+            index=0 if st.session_state.global_memory_toggle == "ON" else 1,
+            help="Toggle between full Hindsight multi-call recall and baseline single-call processing.",
+            key="radio_brief_memory",
+        )
+        st.session_state.global_memory_toggle = memory_mode
 
-    if brief_clicked:
-        with st.spinner("Generating deal brief from backend..."):
+    with toggle_col2:
+        if memory_mode == "ON":
+            st.markdown(
+                """
+                <div class="memory-badge-on">
+                    🧠 <strong>MEMORY ON:</strong> Hindsight recalls all objections, promises, and stakeholder stances across deal history.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                """
+                <div class="memory-badge-off">
+                    ⚪ <strong>MEMORY OFF:</strong> Agent reads ONLY the latest call transcript. Past commitments and objections are blind spots.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    btn_col, _ = st.columns([1, 4])
+    with btn_col:
+        fetch_brief = st.button("⚡ Generate Brief", type="primary", use_container_width=True)
+
+    cache_key = f"{deal_id}_{memory_mode.lower()}"
+
+    # Auto-fetch if not yet in cache, or when button clicked
+    if fetch_brief or cache_key not in st.session_state.brief_cache:
+        with st.spinner(f"Pulling intelligence brief (Memory={memory_mode})..."):
             try:
-                brief_data = api.get_brief(deal_id, memory="on")
-                st.session_state.brief_cache[deal_id] = brief_data
+                brief_res = api.get_brief(deal_id, memory=memory_mode.lower())
+                st.session_state.brief_cache[cache_key] = brief_res
             except api.DealAgentAPIException as exc:
                 st.error(f"Failed to generate brief: {exc.message}")
 
-    brief_data = st.session_state.brief_cache.get(deal_id)
+    brief_data = st.session_state.brief_cache.get(cache_key)
 
     if brief_data:
-        # Executive Summary Box
-        st.markdown("#### Executive Summary")
-        st.info(brief_data.get("brief", "No brief text provided."))
+        # 1. Executive Summary Box
+        st.markdown("#### 📋 Executive Briefing Summary")
+        if memory_mode == "ON":
+            st.success(brief_data.get("brief", "No summary provided."))
+        else:
+            st.warning(brief_data.get("brief", "No summary provided."))
 
-        col_left, col_right = st.columns(2)
+        # 2. "What the agent remembered" Panel (VISIBLE ONLY WHEN MEMORY IS ON)
+        recalled_facts = brief_data.get("recalled_facts", [])
+        if memory_mode == "ON":
+            st.markdown("---")
+            st.markdown("#### 🧠 What The Agent Remembered")
+            st.caption(
+                "Facts, constraints, and historical commitments retrieved from Hindsight memory bank."
+            )
+            if recalled_facts:
+                for rf in recalled_facts:
+                    src_call = rf.get("source_call", "?")
+                    fact_text = rf.get("fact", "")
+                    st.markdown(
+                        f"""
+                        <div class="recalled-box">
+                            <span class="call-tag">Call {src_call}</span> <strong>{fact_text}</strong>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.info("No specific facts retrieved for this deal.")
+        else:
+            st.markdown("---")
+            st.caption(
+                "⚪ **Recalled Facts Hidden:** In Memory OFF mode, the agent has zero historical recall and only inspects the latest call."
+            )
 
-        # Open Objections Card
-        with col_left:
+        st.markdown("---")
+        card_col1, card_col2 = st.columns(2)
+
+        # 3. Open Objections & Blockers
+        with card_col1:
             st.markdown("#### ⚠️ Open Objections & Blockers")
             objections = brief_data.get("open_objections", [])
             if objections:
@@ -286,7 +414,7 @@ with tab_brief:
                         f"""
                         <div class="metric-card">
                             <strong>{obj.get('text', '')}</strong><br>
-                            <small>Raised in Call {obj.get('raised_in_call', '?')} by <em>{obj.get('by', 'Unknown')}</em></small>
+                            <small>Raised in <strong>Call {obj.get('raised_in_call', '?')}</strong> by <em>{obj.get('by', 'Prospect')}</em></small>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -294,8 +422,8 @@ with tab_brief:
             else:
                 st.caption("No open objections recorded.")
 
-            # Promises Card
-            st.markdown("#### 🤝 Commitments & Promises")
+            # 4. Commitments & Promises
+            st.markdown("#### 🤝 Commitments & Promises Made")
             promises = brief_data.get("promises", [])
             if promises:
                 for p in promises:
@@ -303,71 +431,220 @@ with tab_brief:
                         f"""
                         <div class="metric-card">
                             <strong>{p.get('text', '')}</strong><br>
-                            <small>Made by: <em>{p.get('made_by', 'Rep')}</em> | Due: <strong>{p.get('due', 'TBD')}</strong></small>
+                            <small>Promised by: <em>{p.get('made_by', 'Sales Rep')}</em> | Target Date: <strong>{p.get('due', 'TBD')}</strong></small>
                         </div>
                         """,
                         unsafe_allow_html=True,
                     )
             else:
-                st.caption("No open commitments.")
+                st.caption("No pending commitments recorded.")
 
-        # Stakeholders Map Card
-        with col_right:
-            st.markdown("#### 👥 Key Stakeholders & Stances")
+        # 5. Stakeholder Map with Stance Chips
+        with card_col2:
+            st.markdown("#### 👥 Stakeholder Map & Stances")
             stakeholders = brief_data.get("stakeholders", [])
             if stakeholders:
                 for s in stakeholders:
-                    stance = s.get("stance", "Neutral")
-                    stance_color = (
-                        "green"
-                        if "champion" in stance.lower()
-                        else ("orange" if "cautious" in stance.lower() else "red")
-                    )
+                    s_name = s.get("name", "Stakeholder")
+                    s_role = s.get("role", "Stakeholder")
+                    s_stance = s.get("stance", "Neutral")
+                    s_concerns = s.get("concerns", "None specified")
+                    stance_html = render_stance_chip(s_stance)
+
                     st.markdown(
                         f"""
                         <div class="metric-card">
-                            <strong>{s.get('name', 'Stakeholder')}</strong> — <em>{s.get('role', 'Stakeholder')}</em><br>
-                            <span style="color: {stance_color}; font-weight: bold;">Stance: {stance}</span><br>
-                            <small>Key Concerns: {s.get('concerns', 'None recorded')}</small>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <strong>{s_name}</strong>
+                                {stance_html}
+                            </div>
+                            <small><strong>Role:</strong> {s_role}</small><br>
+                            <small><strong>Primary Concern:</strong> {s_concerns}</small>
                         </div>
                         """,
                         unsafe_allow_html=True,
                     )
             else:
-                st.caption("No stakeholders mapped yet.")
+                st.caption("No stakeholders identified yet.")
 
-            # Recalled Facts
-            recalled = brief_data.get("recalled_facts", [])
-            if recalled:
-                st.markdown("#### 🧠 What The Agent Remembered")
-                for r in recalled:
-                    st.markdown(
-                        f"""
-                        <div class="recalled-card">
-                            <strong>Call {r.get('source_call', '?')}:</strong> {r.get('fact', '')}
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
-        # Playbook Tips
-        tips = brief_data.get("playbook_tips", [])
-        if tips:
+        # 6. Playbook Tips (Only present when memory is on)
+        playbook_tips = brief_data.get("playbook_tips", [])
+        if memory_mode == "ON" and playbook_tips:
             st.markdown("---")
-            st.markdown("#### 💡 Learned From Past Deals (Playbook Advice)")
-            for tip in tips:
-                st.success(f"**Tip:** {tip.get('tip', '')}\n\n*Evidence:* {tip.get('evidence', '')}")
-
-    else:
-        st.write("Click **Brief Me** above to pull real-time intelligence for this deal.")
+            st.markdown("#### 💡 Learned From Past Deals (Playbook Bank)")
+            for pt in playbook_tips:
+                st.info(f"**Strategy Tip:** {pt.get('tip', '')}\n\n*Supporting Evidence:* {pt.get('evidence', '')}")
 
 
-# --- TAB 2: CALL TIMELINE ---
+# --- TAB 2: SIDE-BY-SIDE COMPARE (BEFORE & AFTER) ---
+with tab_compare:
+    st.markdown("### ⚖️ Side-by-Side Comparison: Memory OFF vs Memory ON")
+    st.write(
+        "Demonstrates the dramatic contrast in pre-call readiness. Without memory, the agent produces generic summaries. With Hindsight, it tracks promises, objections, and stakeholder nuances."
+    )
+
+    if st.button("🔄 Refresh Comparison Data"):
+        st.session_state.brief_cache.pop(f"{deal_id}_off", None)
+        st.session_state.brief_cache.pop(f"{deal_id}_on", None)
+        st.rerun()
+
+    # Fetch both brief states
+    try:
+        if f"{deal_id}_off" not in st.session_state.brief_cache:
+            st.session_state.brief_cache[f"{deal_id}_off"] = api.get_brief(deal_id, memory="off")
+        if f"{deal_id}_on" not in st.session_state.brief_cache:
+            st.session_state.brief_cache[f"{deal_id}_on"] = api.get_brief(deal_id, memory="on")
+
+        brief_off = st.session_state.brief_cache[f"{deal_id}_off"]
+        brief_on = st.session_state.brief_cache[f"{deal_id}_on"]
+
+        cmp_col1, cmp_col2 = st.columns(2)
+
+        with cmp_col1:
+            st.markdown(
+                """
+                <div class="memory-badge-off" style="width: 100%; text-align: center;">
+                    ⚪ <strong>MEMORY OFF (Baseline)</strong>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.warning(f"**Brief (Latest Call Only):**\n\n{brief_off.get('brief', '')}")
+
+            st.markdown("##### What the agent knows:")
+            st.metric("Historical Facts Recalled", 0)
+            st.metric("Cross-Call Objections", 0)
+            st.caption("❌ Blind to previous commitments made in earlier calls.")
+            st.caption("❌ Unaware of CFO budget ceilings or procurement flags.")
+
+        with cmp_col2:
+            st.markdown(
+                """
+                <div class="memory-badge-on" style="width: 100%; text-align: center;">
+                    🧠 <strong>MEMORY ON (Hindsight Active)</strong>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.success(f"**Brief (Full Sales Cycle Intelligence):**\n\n{brief_on.get('brief', '')}")
+
+            st.markdown("##### What the agent knows:")
+            recalled_count = len(brief_on.get("recalled_facts", []))
+            st.metric("Historical Facts Recalled", recalled_count)
+            st.metric("Playbook Tips Injected", len(brief_on.get("playbook_tips", [])))
+
+            st.markdown("##### Recalled Facts Active in Context:")
+            for rf in brief_on.get("recalled_facts", []):
+                st.markdown(
+                    f"""
+                    <div class="recalled-box">
+                        <span class="call-tag">Call {rf.get('source_call', '?')}</span> {rf.get('fact', '')}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+    except api.DealAgentAPIException as exc:
+        st.error(f"Error loading comparison: {exc.message}")
+
+
+# --- TAB 3: FOLLOW-UP EMAIL DRAFTER ---
+with tab_followup:
+    st.markdown("### ✉️ Personalized Follow-Up Email")
+    st.write(
+        "Generate a client follow-up email that incorporates commitments, resolves open objections, and aligns with stakeholder expectations."
+    )
+
+    f_col1, f_col2 = st.columns([2, 3])
+    with f_col1:
+        f_memory = st.radio(
+            "Email Memory Setting",
+            options=["ON", "OFF"],
+            horizontal=True,
+            index=0 if st.session_state.global_memory_toggle == "ON" else 1,
+            key="radio_email_memory",
+        )
+    with f_col2:
+        if f_memory == "ON":
+            st.caption("🧠 Email references past commitments, SOC 2 reports, and stakeholder pricing concerns.")
+        else:
+            st.caption("⚪ Email is generic and only acknowledges the latest call.")
+
+    if st.button("✉️ Draft Email", type="primary"):
+        with st.spinner("Drafting follow-up email from backend..."):
+            try:
+                followup_res = api.get_followup(deal_id, memory=f_memory.lower())
+                st.session_state[f"email_{deal_id}_{f_memory}"] = followup_res.get("email", "")
+            except api.DealAgentAPIException as exc:
+                st.error(f"Failed to generate email: {exc.message}")
+
+    cached_email = st.session_state.get(f"email_{deal_id}_{f_memory}")
+    if cached_email:
+        st.markdown("#### Draft Preview")
+        st.markdown(
+            f"""
+            <div class="email-container">
+                <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">{cached_email}</pre>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.text_area("Copy Text", value=cached_email, height=120, label_visibility="collapsed")
+
+
+# --- TAB 4: LEARNING CURVE (DEMO DEAL SPECIFICITY) ---
+with tab_learning:
+    st.markdown("### 📈 The Agent Learning Curve")
+    st.write(
+        "As conversations progress from Call 1 through Call 5, Hindsight accumulates structured facts, objection nuances, and commercial terms. The brief transforms from generic discovery into hyper-personalized closing strategy."
+    )
+
+    # Learning Curve Metric Data (Recalled facts as proxy for brief specificity)
+    learning_data = pd.DataFrame(
+        {
+            "Sales Call": ["Call 1 (Discovery)", "Call 3 (Budget Review)", "Call 5 (Closing Alignment)"],
+            "Recalled Facts In Context": [1, 4, 7],
+            "Objection Precision (%)": [20, 65, 95],
+        }
+    )
+
+    chart_col, table_col = st.columns([3, 2])
+    with chart_col:
+        st.markdown("#### Recalled Facts Active in Brief vs Call Progress")
+        chart_df = pd.DataFrame(
+            {"Recalled Facts": [1, 4, 7]},
+            index=["Call 1", "Call 3", "Call 5"],
+        )
+        st.bar_chart(chart_df, color="#0d6efd", height=280)
+
+    with table_col:
+        st.markdown("#### Intelligence Evolution")
+        st.markdown(
+            """
+            * **Call 1 (Baseline Discovery):**
+              * *Recalled Facts:* **1**
+              * *Context:* High-level architecture, initial cloud bill size ($400k/mo).
+            * **Call 3 (Objection Deep Dive):**
+              * *Recalled Facts:* **4**
+              * *Context:* Frank's SOC 2 compliance gate, Sarah's $180k budget cap and 9-month ROI breakeven rule.
+            * **Call 5 (Deal Execution):**
+              * *Recalled Facts:* **7**
+              * *Context:* Sarah's $45k quarterly threshold, Frank's verified SOC 2 audit package, and automated Terraform IAM template.
+            """
+        )
+
+    st.markdown("---")
+    st.info(
+        "💡 **Key Insight:** In traditional stateless agents, Call 5 is processed with zero recollection of Call 2's promised security audit or Call 3's quarterly amortization requirement. Hindsight ensures no commitment is ever dropped."
+    )
+
+
+# --- TAB 5: CALL TIMELINE ---
 with tab_timeline:
-    st.markdown(f"### Call Timeline for {company}")
+    st.markdown(f"### Chronological Call History for {company}")
 
     if not calls:
-        st.info("No calls recorded yet for this deal. Use the **Log New Call** tab to log a transcript.")
+        st.info("No calls recorded yet for this deal. Use the **Log New Call** tab to log a conversation.")
     else:
         for c in calls:
             c_no = c.get("call_no", "?")
@@ -375,8 +652,11 @@ with tab_timeline:
             participants = c.get("participants", [])
             transcript = c.get("transcript", "")
 
-            with st.expander(f"📞 Call {c_no} — {c_date} ({len(participants)} Participants)", expanded=False):
-                st.write(f"**Participants:** {', '.join(participants)}")
+            with st.expander(
+                f"📞 Call {c_no} — {c_date} ({len(participants)} Participants)",
+                expanded=(c_no == len(calls)),
+            ):
+                st.markdown(f"**Participants:** {', '.join(participants)}")
                 st.markdown("**Transcript:**")
                 st.text_area(
                     label=f"Transcript Call {c_no}",
@@ -388,14 +668,13 @@ with tab_timeline:
                 )
 
 
-# --- TAB 3: ADD CALL FORM ---
+# --- TAB 6: ADD CALL FORM ---
 with tab_add_call:
     st.markdown("### Log a New Call Transcript")
     st.write("Record a newly completed conversation to retain facts and objections into memory.")
 
     next_call_no = (max([c.get("call_no", 0) for c in calls], default=0)) + 1
 
-    # Demo Deal Helper: Allow quick pre-fill of Call 5 for Northwind Logistics
     demo_call_5 = get_demo_call_5_data()
     is_northwind = "northwind" in company.lower() and next_call_no == 5
 
@@ -456,7 +735,6 @@ with tab_add_call:
                             participants=participants_list,
                             transcript=input_transcript.strip(),
                         )
-                        # Append locally to timeline
                         new_call = {
                             "call_no": int(input_call_no),
                             "date": input_date.strip(),
@@ -473,10 +751,13 @@ with tab_add_call:
                         st.session_state.pop("prefill_participants", None)
                         st.session_state.pop("prefill_transcript", None)
 
-                        # Clear cached brief so user re-briefs with new call retained
-                        st.session_state.brief_cache.pop(deal_id, None)
+                        # Clear brief cache for this deal so new call triggers fresh brief
+                        st.session_state.brief_cache.pop(f"{deal_id}_on", None)
+                        st.session_state.brief_cache.pop(f"{deal_id}_off", None)
 
-                        st.success(f"Call {input_call_no} retained successfully! Switch to 'Pre-Call Brief' to update intelligence.")
+                        st.success(
+                            f"Call {input_call_no} retained successfully! Switch to 'Pre-Call Brief' to update intelligence."
+                        )
                         st.rerun()
                     except api.DealAgentAPIException as exc:
                         st.error(f"Failed to log call: {exc.message}")
