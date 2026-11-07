@@ -2,13 +2,16 @@
 
 Frontend dashboard communicating strictly with the backend via frontend/api.py.
 Features:
-- Sidebar deal selector with pipeline stats, health indicator, and seed trigger
+- Sidebar navigation: Deal Workspace & Playbook Bank
 - Pre-Call Brief with prominent MEMORY ON/OFF toggle
 - 'What the agent remembered' recalled-facts panel (active only when memory is ON)
+- 'Learned from past deals' playbook tips in deal briefs
 - Stakeholder map with visual stance chips
 - Open objections and commitments tracking cards
 - Side-by-side comparison view (Memory OFF vs Memory ON)
 - Personalized follow-up email generator with Memory toggle
+- Mark Won/Lost outcome form (POST /deals/{id}/outcome)
+- Playbook Bank page displaying 'What Works' insights and mental model cards
 - Learning curve chart showing intelligence progression across Calls 1, 3, and 5
 - Full call timeline and new call transcript logging form
 """
@@ -112,6 +115,22 @@ st.markdown(
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         line-height: 1.6;
     }
+    .insight-card {
+        background-color: #ffffff;
+        border: 1px solid #d1e7dd;
+        border-left: 5px solid #198754;
+        border-radius: 6px;
+        padding: 14px 18px;
+        margin-bottom: 12px;
+    }
+    .mental-card {
+        background-color: #f8f9fa;
+        border: 1px solid #ced4da;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -161,7 +180,7 @@ def render_stance_chip(stance: str) -> str:
     return f'<span class="stance-chip {css}">{stance}</span>'
 
 
-# Initialize session state
+# Initialize session state stores
 if "local_calls" not in st.session_state:
     st.session_state.local_calls = load_local_seed_calls()
 
@@ -173,6 +192,12 @@ if "brief_cache" not in st.session_state:
 
 if "global_memory_toggle" not in st.session_state:
     st.session_state.global_memory_toggle = "ON"
+
+if "current_view" not in st.session_state:
+    st.session_state.current_view = "Deal Workspace"
+
+if "deal_outcomes" not in st.session_state:
+    st.session_state.deal_outcomes = {}
 
 
 # --- SIDEBAR ---
@@ -189,6 +214,18 @@ with st.sidebar:
         st.error(f"🔴 Backend Offline (`{api.API_BASE}`)", icon=None)
         st.info("Start `backend/main_stub.py` or `backend/main.py` on port 8000.")
 
+    # Primary Navigation
+    st.markdown("### Navigation")
+    nav_selection = st.radio(
+        "View Mode",
+        options=["🏢 Deal Workspace", "📚 Playbook Bank"],
+        index=0 if st.session_state.current_view == "Deal Workspace" else 1,
+        label_visibility="collapsed",
+    )
+    st.session_state.current_view = "Deal Workspace" if "Deal" in nav_selection else "Playbook Bank"
+
+    st.markdown("---")
+
     # Seed Demo Data Trigger
     st.markdown("### Data Management")
     if st.button("🌱 Seed Demo Data", use_container_width=True, disabled=not is_healthy):
@@ -196,6 +233,7 @@ with st.sidebar:
             try:
                 res = api.seed_demo_data()
                 st.session_state.local_calls = load_local_seed_calls()
+                st.session_state.brief_cache = {}
                 st.toast(
                     f"Seeded: {res.get('deals_loaded', 0)} deals, {res.get('calls_retained', 0)} calls."
                 )
@@ -203,9 +241,7 @@ with st.sidebar:
             except api.DealAgentAPIException as err:
                 st.error(f"Seeding failed: {err.message}")
 
-    st.markdown("---")
-    st.markdown("### Active Deals")
-
+    # Active Deals Roster (when in Deal Workspace)
     deals = []
     if is_healthy:
         try:
@@ -216,40 +252,45 @@ with st.sidebar:
     else:
         st.caption("Connect backend to load deals.")
 
-    if not deals and is_healthy:
-        st.info("No deals available yet. Click **Seed Demo Data** above.")
+    if st.session_state.current_view == "Deal Workspace":
+        st.markdown("---")
+        st.markdown("### Active Deals")
 
-    deal_options = {}
-    default_index = 0
-    for idx, d in enumerate(deals):
-        d_id = d.get("deal_id") or d.get("id")
-        comp = d.get("company", "Unknown")
-        val = d.get("value", 0)
-        outcome = d.get("outcome")
-        badge = "WON" if outcome == "won" else ("LOST" if outcome == "lost" else "OPEN")
-        deal_options[d_id] = f"{comp} (${val:,.0f}) [{badge}]"
-        if st.session_state.selected_deal_id == d_id:
-            default_index = idx
+        if not deals and is_healthy:
+            st.info("No deals available yet. Click **Seed Demo Data** above.")
 
-    selected_deal = None
-    if deal_options:
-        selected_id = st.selectbox(
-            "Select deal:",
-            options=list(deal_options.keys()),
-            format_func=lambda x: deal_options[x],
-            index=default_index,
-        )
-        st.session_state.selected_deal_id = selected_id
-        selected_deal = next(
-            (d for d in deals if (d.get("deal_id") or d.get("id")) == selected_id),
-            None,
-        )
+        deal_options = {}
+        default_index = 0
+        for idx, d in enumerate(deals):
+            d_id = d.get("deal_id") or d.get("id")
+            comp = d.get("company", "Unknown")
+            val = d.get("value", 0)
+            # Use local outcome override if updated via outcome form
+            outcome = st.session_state.deal_outcomes.get(d_id, d.get("outcome"))
+            badge = "WON" if outcome == "won" else ("LOST" if outcome == "lost" else "OPEN")
+            deal_options[d_id] = f"{comp} (${val:,.0f}) [{badge}]"
+            if st.session_state.selected_deal_id == d_id:
+                default_index = idx
+
+        selected_deal = None
+        if deal_options:
+            selected_id = st.selectbox(
+                "Select deal:",
+                options=list(deal_options.keys()),
+                format_func=lambda x: deal_options[x],
+                index=default_index,
+            )
+            st.session_state.selected_deal_id = selected_id
+            selected_deal = next(
+                (d for d in deals if (d.get("deal_id") or d.get("id")) == selected_id),
+                None,
+            )
 
     st.markdown("---")
     st.caption("Built strictly against CONTRACT.md")
 
 
-# --- MAIN AREA ---
+# --- GLOBAL BACKEND ERROR CHECK ---
 if not is_healthy:
     st.error("### ⚠️ Backend Server Not Reachable")
     st.write(
@@ -257,7 +298,7 @@ if not is_healthy:
     )
     st.markdown(
         """
-        **To run the stub server:**
+        **To run the backend stub:**
         ```bash
         cd backend
         uvicorn main_stub:app --reload --port 8000
@@ -268,6 +309,89 @@ if not is_healthy:
         st.rerun()
     st.stop()
 
+
+# ==============================================================================
+# VIEW 1: PLAYBOOK BANK (CROSS-DEAL ORGANIZATIONAL MEMORY)
+# ==============================================================================
+if st.session_state.current_view == "Playbook Bank":
+    st.title("📚 Playbook Knowledge Bank")
+    st.write(
+        "The cross-deal organizational memory bank. Aggregates winning objection-handling patterns, pricing tactics, and cognitive mental models distilled from closed deals."
+    )
+
+    if st.button("🔄 Refresh Playbook"):
+        st.session_state.pop("playbook_insights", None)
+        st.rerun()
+
+    try:
+        if "playbook_insights" not in st.session_state:
+            with st.spinner("Loading playbook insights from backend..."):
+                st.session_state.playbook_insights = api.get_playbook_insights()
+
+        pb_data = st.session_state.playbook_insights
+        insights = pb_data.get("insights", [])
+        mental_models = pb_data.get("mental_models", [])
+
+        st.markdown("---")
+        col_insights, col_models = st.columns([3, 2])
+
+        with col_insights:
+            st.markdown("### 🏆 What Works (Evidence-Based Insights)")
+            st.write("Synthesized reflection across won vs lost deal outcomes.")
+
+            if insights:
+                for idx, ins in enumerate(insights, 1):
+                    txt = ins.get("text", "")
+                    conf = ins.get("confidence", 0.0)
+                    pct = int(conf * 100) if conf <= 1.0 else int(conf)
+
+                    st.markdown(
+                        f"""
+                        <div class="insight-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong style="font-size: 1.05rem;">#{idx} Winning Pattern</strong>
+                                <span style="background-color: #d1e7dd; color: #0f5132; font-weight: bold; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">
+                                    {pct}% Confidence
+                                </span>
+                            </div>
+                            <p style="margin: 0; font-size: 0.95rem; line-height: 1.5;">{txt}</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.info("No playbook insights generated yet. Close deals as won/lost to train the playbook.")
+
+        with col_models:
+            st.markdown("### 🧠 Mental Models & Frameworks")
+            st.write("Cognitive playbooks guiding sales execution.")
+
+            if mental_models:
+                for mm in mental_models:
+                    name = mm.get("name", "Strategic Model")
+                    summary = mm.get("summary", "")
+
+                    st.markdown(
+                        f"""
+                        <div class="mental-card">
+                            <h4 style="margin-top: 0; color: #0d6efd;">📘 {name}</h4>
+                            <p style="margin: 0; font-size: 0.9rem; line-height: 1.5; color: #495057;">{summary}</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.info("No mental models registered.")
+
+    except api.DealAgentAPIException as exc:
+        st.error(f"Failed to load playbook insights: {exc.message}")
+
+    st.stop()
+
+
+# ==============================================================================
+# VIEW 2: DEAL WORKSPACE (SELECTED DEAL INSPECTOR)
+# ==============================================================================
 if not selected_deal:
     st.info("👋 Select a deal from the sidebar or click **Seed Demo Data** to populate accounts.")
     st.stop()
@@ -277,7 +401,7 @@ deal_id = selected_deal.get("deal_id") or selected_deal.get("id")
 company = selected_deal.get("company", "Deal Overview")
 value = selected_deal.get("value", 0)
 stage = selected_deal.get("stage", "In Progress")
-outcome = selected_deal.get("outcome")
+outcome = st.session_state.deal_outcomes.get(deal_id, selected_deal.get("outcome"))
 calls = st.session_state.local_calls.get(deal_id, [])
 
 col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
@@ -296,12 +420,13 @@ with col4:
 
 st.markdown("---")
 
-# Navigation Tabs
-tab_brief, tab_compare, tab_followup, tab_learning, tab_timeline, tab_add_call = st.tabs(
+# Navigation Tabs within Deal Workspace
+tab_brief, tab_compare, tab_followup, tab_outcome, tab_learning, tab_timeline, tab_add_call = st.tabs(
     [
         "⚡ Pre-Call Brief",
         "⚖️ Compare (ON vs OFF)",
         "✉️ Follow-Up Email",
+        "🏆 Mark Outcome",
         "📈 Learning Curve",
         f"📞 Call Timeline ({len(calls)})",
         "➕ Log New Call",
@@ -309,7 +434,7 @@ tab_brief, tab_compare, tab_followup, tab_learning, tab_timeline, tab_add_call =
 )
 
 
-# --- TAB 1: PRE-CALL BRIEF (CORE MEMORY STORY) ---
+# --- TAB 1: PRE-CALL BRIEF (CORE MEMORY STORY & PLAYBOOK ADVICE) ---
 with tab_brief:
     st.markdown("### Pre-Call Intelligence Briefing")
     st.write("Generates actionable intelligence to equip the sales executive before entering the next call.")
@@ -467,13 +592,22 @@ with tab_brief:
             else:
                 st.caption("No stakeholders identified yet.")
 
-        # 6. Playbook Tips (Only present when memory is on)
+        # 6. Playbook Tips ("Learned from past deals")
         playbook_tips = brief_data.get("playbook_tips", [])
         if memory_mode == "ON" and playbook_tips:
             st.markdown("---")
-            st.markdown("#### 💡 Learned From Past Deals (Playbook Bank)")
+            st.markdown("#### 💡 Learned From Past Deals")
+            st.caption("Tactical recommendations synthesized from winning patterns across historical accounts.")
             for pt in playbook_tips:
-                st.info(f"**Strategy Tip:** {pt.get('tip', '')}\n\n*Supporting Evidence:* {pt.get('evidence', '')}")
+                st.markdown(
+                    f"""
+                    <div class="insight-card">
+                        <strong>🎯 Playbook Tip:</strong> {pt.get('tip', '')}<br>
+                        <small style="color: #495057;"><strong>Win-Rate Evidence:</strong> <em>{pt.get('evidence', '')}</em></small>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
 
 # --- TAB 2: SIDE-BY-SIDE COMPARE (BEFORE & AFTER) ---
@@ -592,20 +726,81 @@ with tab_followup:
         st.text_area("Copy Text", value=cached_email, height=120, label_visibility="collapsed")
 
 
-# --- TAB 4: LEARNING CURVE (DEMO DEAL SPECIFICITY) ---
+# --- TAB 4: MARK OUTCOME (PHASE B4 REQUIREMENT) ---
+with tab_outcome:
+    st.markdown("### 🏆 Record Deal Outcome & Train Playbook")
+    st.write(
+        "Close this deal as won or lost. Retains the objections handled, concessions made, and outcome strategy into the global Hindsight Playbook bank to guide future deals."
+    )
+
+    with st.form("mark_outcome_form"):
+        res_col1, res_col2 = st.columns(2)
+        with res_col1:
+            outcome_choice = st.selectbox(
+                "Final Deal Outcome",
+                options=["won", "lost"],
+                format_func=lambda x: "🎉 Closed Won" if x == "won" else "🛑 Closed Lost",
+            )
+        with res_col2:
+            st.write("")
+            st.caption("Won deals contribute positive strategy rules; lost deals teach failure modes to avoid.")
+
+        default_objections = [
+            "CFO budget ceiling ($180k cap) resolved with quarterly amortization",
+            "Security compliance (SOC 2 Type II audit package delivered)",
+            "CTO integration friction (Agentless zero-toil connector deployed)",
+            "Incumbent competitor overlap (Contract buyout / phased pilot credits)",
+            "Procurement governance (Custom BAA and mutual liability caps)",
+        ]
+
+        selected_handled = st.multiselect(
+            "Objections Handled / Key Blockers Encountered",
+            options=default_objections,
+            default=[default_objections[0], default_objections[1]],
+            help="Select the specific objections resolved during the sales cycle.",
+        )
+
+        outcome_notes = st.text_area(
+            "Executive Closing Notes & Lessons Learned",
+            height=120,
+            value=(
+                "Sarah Jenkins (CFO) signed off after restructuring into $45,000 quarterly installments. "
+                "Frank Morales in procurement cleared InfoSec after receiving the SOC 2 Type II audit report."
+                if outcome_choice == "won"
+                else "Deal stalled due to unaddressed compliance questions and rigid upfront annual payment terms."
+            ),
+            placeholder="Document what worked or what caused the deal to stall...",
+        )
+
+        outcome_submit = st.form_submit_button("💾 Save Outcome to Playbook Bank", type="primary")
+
+        if outcome_submit:
+            with st.spinner("Recording outcome into Hindsight Playbook..."):
+                try:
+                    res = api.set_deal_outcome(
+                        deal_id=deal_id,
+                        result=outcome_choice,
+                        objections_handled=selected_handled,
+                        notes=outcome_notes.strip(),
+                    )
+                    # Update local state
+                    st.session_state.deal_outcomes[deal_id] = outcome_choice
+                    # Invalidate playbook cache so new insights load
+                    st.session_state.pop("playbook_insights", None)
+
+                    st.success(
+                        f"Deal '{company}' marked as {outcome_choice.upper()}! Outcome and strategy successfully retained into Playbook bank."
+                    )
+                    st.rerun()
+                except api.DealAgentAPIException as exc:
+                    st.error(f"Failed to record outcome: {exc.message}")
+
+
+# --- TAB 5: LEARNING CURVE (DEMO DEAL SPECIFICITY) ---
 with tab_learning:
     st.markdown("### 📈 The Agent Learning Curve")
     st.write(
         "As conversations progress from Call 1 through Call 5, Hindsight accumulates structured facts, objection nuances, and commercial terms. The brief transforms from generic discovery into hyper-personalized closing strategy."
-    )
-
-    # Learning Curve Metric Data (Recalled facts as proxy for brief specificity)
-    learning_data = pd.DataFrame(
-        {
-            "Sales Call": ["Call 1 (Discovery)", "Call 3 (Budget Review)", "Call 5 (Closing Alignment)"],
-            "Recalled Facts In Context": [1, 4, 7],
-            "Objection Precision (%)": [20, 65, 95],
-        }
     )
 
     chart_col, table_col = st.columns([3, 2])
@@ -639,7 +834,7 @@ with tab_learning:
     )
 
 
-# --- TAB 5: CALL TIMELINE ---
+# --- TAB 6: CALL TIMELINE ---
 with tab_timeline:
     st.markdown(f"### Chronological Call History for {company}")
 
@@ -668,7 +863,7 @@ with tab_timeline:
                 )
 
 
-# --- TAB 6: ADD CALL FORM ---
+# --- TAB 7: ADD CALL FORM ---
 with tab_add_call:
     st.markdown("### Log a New Call Transcript")
     st.write("Record a newly completed conversation to retain facts and objections into memory.")
