@@ -1,0 +1,685 @@
+"""Data generation script for Deal Intelligence Agent.
+
+Generates realistic B2B SaaS sales deal datasets conforming strictly to CONTRACT.md:
+- 6 B2B SaaS deals with realistic company names and values ($40k - $400k)
+- 4-5 calls each with 150-300 words of authentic dialogue
+- Consistent stakeholders across calls (CFO, CTO, procurement, champion, skeptic)
+- Recurring objections: pricing/budget, security/compliance, integration, competitors, procurement
+- Specific promises and changing stances over time
+- Outcomes: 2 won, 2 lost, 2 open (null) with clear winning tactics (security workshops, phased pricing)
+- Demo deal: Northwind Logistics with Call 5 saved separately as data/demo_call_5.json
+"""
+
+import json
+from pathlib import Path
+
+
+def generate_data():
+    deals = [
+        {
+            "id": "deal-1",
+            "company": "Northwind Logistics",
+            "value": 180000,
+            "outcome": None,
+            "calls": [
+                {
+                    "call_no": 1,
+                    "date": "2026-09-14",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "David Chen (VP Infrastructure & Engineering)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Thank you for jumping on, David. To kick off our evaluation, could you walk me "
+                        "through Northwind's cloud footprint and what's driving your exploration of automated FinOps?\n"
+                        "David Chen: Thanks Alice. We run logistics management across fourteen regional distribution centers "
+                        "in North America. Our core dispatch routing, shipment tracking, and real-time sensor streams run on "
+                        "AWS EKS with Kubernetes, alongside our legacy SAP ERP database. Over the past two quarters, our AWS "
+                        "invoice surged by forty-five percent, exceeding four hundred thousand dollars a month. A significant "
+                        "chunk comes from untracked cross-AZ egress bandwidth and unattached EBS storage volumes that our DevOps "
+                        "teams spun up for regional pilots and never decommissioned.\n"
+                        "Alice Morgan: That kind of cluster visibility gap is exactly why companies partner with us. Our platform "
+                        "connects directly into your AWS billing stream and Kubernetes control plane to attribute costs down to "
+                        "specific pods and engineering namespaces in real time.\n"
+                        "David Chen: That real-time namespace attribution is critical for us. If your platform can integrate cleanly "
+                        "without adding overhead to our Kubernetes worker nodes, I want to champion this across our engineering "
+                        "group. Can you show me what the return on investment looks like based on our current spend?\n"
+                        "Alice Morgan: Absolutely. I promise to deliver a customized ROI benchmark model calculated against Northwind's "
+                        "AWS bill by next Tuesday afternoon."
+                    ),
+                },
+                {
+                    "call_no": 2,
+                    "date": "2026-09-22",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "David Chen (VP Infrastructure & Engineering)",
+                        "Frank Morales (Head of Strategic Procurement)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Great to reconnect, David, and welcome Frank to the discussion.\n"
+                        "Frank Morales: Thanks Alice. David walked me through your product demonstration, and while engineering "
+                        "is excited, procurement and risk management have stringent requirements. Northwind handles proprietary "
+                        "logistics manifests and supply-chain data for Fortune 500 retailers. Before any third-party connector "
+                        "receives access to our AWS environment, our InfoSec committee mandates SOC 2 Type II compliance, ISO "
+                        "27001 certification, and verification of zero data persistence outside our VPC.\n"
+                        "David Chen: Frank is right on security, though I will say your agentless architecture looked cleaner "
+                        "than what we saw with CloudHealth last year. CloudHealth required custom daemon sets on every single node, "
+                        "which caused latency spikes in dispatch.\n"
+                        "Alice Morgan: That's a key distinction, David. We use AWS read-only IAM roles with cross-account trust "
+                        "boundaries, meaning zero agent footprint and zero compute overhead on your production nodes.\n"
+                        "Frank Morales: That sounds promising, but we evaluate vendors on audited documentation, not marketing "
+                        "claims. We also need to evaluate whether our existing VMware CloudHealth license can be expanded before "
+                        "onboarding a new vendor.\n"
+                        "Alice Morgan: Completely understood, Frank. I promise to email our latest SOC 2 Type II audit report, "
+                        "ISO certifications, and enterprise architecture security pack directly to you by Friday afternoon so your "
+                        "security team can begin their review."
+                    ),
+                },
+                {
+                    "call_no": 3,
+                    "date": "2026-09-29",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "David Chen (VP Infrastructure & Engineering)",
+                        "Sarah Jenkins (Chief Financial Officer)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Hello David, and welcome Sarah. Thank you for joining our commercial alignment session today.\n"
+                        "Sarah Jenkins: Hi Alice. I've reviewed the proposal you shared with David. While the automated FinOps "
+                        "capabilities address David's cluster monitoring needs, the proposed annual fee of one hundred and eighty "
+                        "thousand dollars is a major blocker. Our unallocated Q3 tooling budget is strictly capped, and your quote "
+                        "comes in nearly twenty percent above our discretionary threshold. Furthermore, corporate finance requires "
+                        "all new enterprise software investments to demonstrate a guaranteed payback period within nine months.\n"
+                        "David Chen: Sarah, from an infrastructure perspective, our team identified over twenty-five thousand "
+                        "dollars a month in idle non-production resources during our AWS billing audit. If Alice's platform automates "
+                        "those savings, we recoup the license fee in less than eight months.\n"
+                        "Sarah Jenkins: Projections are helpful, David, but my responsibility is cash flow and fiscal risk. Without "
+                        "commercial guarantees or flexible payment structures, I cannot sign off on a lump-sum capital expenditure "
+                        "of that scale right now.\n"
+                        "Alice Morgan: I appreciate your transparency, Sarah. We recognize that upfront cash commitments carry risk. "
+                        "I promise to construct a customized phased pilot pricing model and a structured payback schedule for you "
+                        "by Monday morning."
+                    ),
+                },
+                {
+                    "call_no": 4,
+                    "date": "2026-10-06",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Sarah Jenkins (Chief Financial Officer)",
+                        "David Chen (VP Infrastructure & Engineering)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good afternoon Sarah and David. Thank you for making time to follow up on our commercial framework.\n"
+                        "Sarah Jenkins: Thanks Alice. I reviewed your initial payback notes with our executive team. Here is the operational "
+                        "reality: our corporate bylaws dictate that any annual contract exceeding one hundred and fifty thousand dollars "
+                        "requires full board approval, which won't happen until next quarter's governance cycle. However, if the contract "
+                        "is structured as quarterly amortized billing under forty-five thousand dollars per quarter, I can approve it under "
+                        "my executive authority without waiting for the board.\n"
+                        "David Chen: That quarterly schedule would allow us to kick off implementation immediately before the upcoming "
+                        "holiday shipping rush.\n"
+                        "Sarah Jenkins: There is another major hurdle, however. Frank Morales in procurement flagged that he still hasn't "
+                        "received the SOC 2 Type II audit report that you promised two weeks ago. Our InfoSec committee cannot sign off "
+                        "on the security questionnaire without that audit documentation. If we don't have verified compliance documentation "
+                        "in Frank's hands and quarterly billing terms in place, procurement will be forced to freeze this initiative.\n"
+                        "Alice Morgan: I sincerely apologize for the delay on that security package, Sarah. I will personally ensure Frank "
+                        "receives the complete audit dossier alongside the amended quarterly terms."
+                    ),
+                },
+            ],
+        },
+        {
+            "id": "deal-2",
+            "company": "Apex FinTech Solutions",
+            "value": 240000,
+            "outcome": "won",
+            "calls": [
+                {
+                    "call_no": 1,
+                    "date": "2026-08-10",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Marcus Brody (VP Cloud Platform)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Hi Marcus, thanks for connecting today to discuss Apex FinTech's multi-cloud optimization goals.\n"
+                        "Marcus Brody: Thanks Alice. Apex operates real-time transaction processing networks across AWS and Google Cloud, "
+                        "processing roughly eight billion dollars in annual merchant volume. Over the last twelve months, our cloud "
+                        "infrastructure bill swelled to 2.2 million dollars annually. We have hundreds of unmanaged RDS databases, "
+                        "orphaned Redis caches, and over-provisioned ECS services. Our biggest operational pain point is that engineering "
+                        "teams have no visibility or financial accountability into what their microservices actually cost.\n"
+                        "Alice Morgan: That lack of granular cost allocation is a common challenge for high-growth FinTech companies. "
+                        "Our platform creates automated team attribution and surfaces anomaly alerts directly in Slack so engineering "
+                        "leads can rightsize resources autonomously.\n"
+                        "Marcus Brody: That would save our DevOps team dozens of hours every month. I want to champion this, but our "
+                        "InfoSec team and CFO maintain strict veto gates on third-party software vendors.\n"
+                        "Alice Morgan: I completely understand. I promise to deliver a comprehensive cloud inventory report and our standard "
+                        "security overview by Thursday afternoon so you can review it before involving other stakeholders."
+                    ),
+                },
+                {
+                    "call_no": 2,
+                    "date": "2026-08-18",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Marcus Brody (VP Cloud Platform)",
+                        "Rajiv Patel (Chief Information Security Officer)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good afternoon Marcus, and welcome Rajiv. Thank you for making time for our architecture review.\n"
+                        "Rajiv Patel: Hello Alice. In financial services, security and regulatory compliance supersede feature sets. We "
+                        "operate under PCI-DSS Level 1, SOC 1, and strict FedRAMP guidelines. I cannot permit any external vendor to deploy "
+                        "agents or extract raw database payloads from our VPC. Your documentation claims read-only access, but we require "
+                        "verifiable isolation proof.\n"
+                        "Alice Morgan: We take compliance as seriously as our enterprise clients do, Rajiv. We do not inspect payload data; "
+                        "we ingest only metadata from CloudWatch and AWS Cost and Usage Reports. Furthermore, to make this transparent, "
+                        "I want to lead by offering a dedicated Security-Review Architecture Workshop with our Principal Security Architect "
+                        "and provide our open-source Terraform templates so your team can inspect every IAM permission before deployment.\n"
+                        "Marcus Brody: Having our security engineers walk through the IAM templates line by line would resolve all questions.\n"
+                        "Rajiv Patel: Proactively offering an architectural security workshop is exactly what we look for in an enterprise "
+                        "partner. If the workshop validates that permissions are strictly least-privilege, InfoSec will endorse the evaluation.\n"
+                        "Alice Morgan: Wonderful. I promise to schedule that technical security review workshop for Tuesday morning."
+                    ),
+                },
+                {
+                    "call_no": 3,
+                    "date": "2026-08-27",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Marcus Brody (VP Cloud Platform)",
+                        "Elena Vance (Chief Financial Officer)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Hello Marcus, and welcome Elena. Thank you for joining our commercial discussion.\n"
+                        "Elena Vance: Good morning Alice. Marcus shared the preliminary proposal. The software capabilities look impressive, "
+                        "but two hundred and forty thousand dollars upfront is a substantial commitment. Our unallocated Q3 software capital "
+                        "reserve has a hard cap of one hundred and eighty thousand dollars. We cannot approve an upfront enterprise agreement "
+                        "that breaches that boundary without demonstrated, realized cost reduction.\n"
+                        "Alice Morgan: I understand completely, Elena. Rather than forcing an inflexible upfront contract, we want to structure "
+                        "a phased-pricing pilot. We can establish a sixty thousand dollar first-quarter pilot milestone. Once our platform "
+                        "identifies and executes at least fifteen thousand dollars in monthly recurring cloud waste, that sixty thousand dollar "
+                        "pilot fee is credited one hundred percent toward the full annual contract.\n"
+                        "Marcus Brody: That structure eliminates risk for finance while letting us start clawing back idle compute spend immediately.\n"
+                        "Elena Vance: A phased pilot with milestone-based credits directly aligns with our fiscal risk criteria. If you put "
+                        "that in writing, I can approve the pilot under our Q3 discretionary threshold.\n"
+                        "Alice Morgan: I promise to generate the updated pilot order form with the sixty thousand dollar milestone credit terms "
+                        "by tomorrow afternoon."
+                    ),
+                },
+                {
+                    "call_no": 4,
+                    "date": "2026-09-08",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Elena Vance (Chief Financial Officer)",
+                        "Rajiv Patel (Chief Information Security Officer)",
+                        "Marcus Brody (VP Cloud Platform)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good afternoon team. Thank you all for joining our final review session.\n"
+                        "Rajiv Patel: I will start with our security findings. Our team completed the Security-Review Architecture Workshop "
+                        "last week. The least-privilege Terraform templates and SOC 2 Type II controls passed our audit without a single "
+                        "finding. InfoSec has issued formal approval for production deployment.\n"
+                        "Marcus Brody: In addition, we deployed the read-only connector into our staging account six days ago. It has already "
+                        "identified eighteen thousand dollars in unused RDS read replicas and over-provisioned compute pools.\n"
+                        "Elena Vance: That empirical validation is what I needed to see. The documented savings exceed the milestone threshold "
+                        "we established for the phased-pricing pilot. Given that the sixty thousand dollar payment credits directly toward the "
+                        "annual agreement and security is fully satisfied, finance is ready to execute the enterprise agreement.\n"
+                        "Alice Morgan: That is tremendous news. I will issue the countersigned agreement and coordinate with Marcus to schedule "
+                        "our enterprise onboarding kickoff.\n"
+                        "Elena Vance: Congratulations Alice. The collaborative security review and flexible pilot pricing made this an easy "
+                        "decision for executive leadership."
+                    ),
+                },
+            ],
+        },
+        {
+            "id": "deal-3",
+            "company": "Vanguard Retail Systems",
+            "value": 160000,
+            "outcome": "won",
+            "calls": [
+                {
+                    "call_no": 1,
+                    "date": "2026-08-15",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Chloe Zhao (Director of Site Reliability)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Thanks for taking the time to meet today, Chloe. I would love to learn about Vanguard's infrastructure "
+                        "and the challenges you are seeing in cloud cost management.\n"
+                        "Chloe Zhao: Thanks Alice. Vanguard provides omnichannel point-of-sale and inventory infrastructure for over eight "
+                        "hundred retail brand storefronts. Our infrastructure spans Google Cloud Platform and on-premises VMware data clusters. "
+                        "During peak retail shopping events like back-to-school and holiday sales, our auto-scaling clusters expand dramatically, "
+                        "driving cloud costs past 1.5 million dollars a year. Right now, our SRE team spends two days every sprint manually "
+                        "exporting billing CSVs and trying to reconcile pod usage against store transaction volumes.\n"
+                        "Alice Morgan: That manual reconciliation toil is exhausting for engineering teams. Our platform integrates directly "
+                        "with GCP billing exports and Kubernetes cluster metrics to provide automated cost telemetry per retail customer.\n"
+                        "Chloe Zhao: That automated telemetry would be transformative for our team. I want to champion this, but our VP of "
+                        "Enterprise Architecture is protective of our current monitoring stack and cautious about engineering integration effort.\n"
+                        "Alice Morgan: I appreciate that insight, Chloe. I promise to prepare a tailored technical summary showing our GCP and "
+                        "Kubernetes integration blueprint by Tuesday morning."
+                    ),
+                },
+                {
+                    "call_no": 2,
+                    "date": "2026-08-24",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Chloe Zhao (Director of Site Reliability)",
+                        "Arthur Pendelton (VP Enterprise Architecture)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Hello Chloe, and welcome Arthur. Thank you for joining our architectural review.\n"
+                        "Arthur Pendelton: Hello Alice. Let me be candid. Vanguard already spends over one hundred and ten thousand dollars "
+                        "annually on Datadog for infrastructure observability. Our engineering teams have a packed roadmap, and I cannot "
+                        "authorize an initiative that requires deploying heavy sidecars, configuring custom agents, or diverting engineers "
+                        "from our core POS services to build integrations.\n"
+                        "Alice Morgan: That is a very reasonable concern, Arthur. We designed our platform specifically to eliminate integration "
+                        "friction. We require zero sidecars and zero agents on your worker nodes. Instead, we offer a turnkey, agentless "
+                        "connector that reads native GCP Cloud Billing BigQuery exports and streams cost notifications directly into Datadog "
+                        "webhooks in under forty-eight hours without a single line of application code changes.\n"
+                        "Chloe Zhao: Connecting directly into our existing Datadog dashboards via webhooks means our on-call engineers do not "
+                        "have to learn a separate tool.\n"
+                        "Arthur Pendelton: An agentless deployment that leverages our existing Datadog investment directly neutralizes my "
+                        "concern regarding engineering overhead. If you can prove that deployment speed in our dev sandbox, you have my support.\n"
+                        "Alice Morgan: I promise to provide sandbox access credentials and our zero-touch GCP deployment guide by tomorrow afternoon."
+                    ),
+                },
+                {
+                    "call_no": 3,
+                    "date": "2026-09-02",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Chloe Zhao (Director of Site Reliability)",
+                        "Miriam Ross (VP Finance)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good morning Chloe, and welcome Miriam. Thank you for joining to discuss the commercial structure.\n"
+                        "Miriam Ross: Good morning Alice. Arthur and Chloe briefed me on the technical evaluation, which sounds positive. "
+                        "However, from a financial perspective, adding a one hundred and sixty thousand dollar software line item on top of our "
+                        "existing Datadog contract requires rigorous justification. Our executive board is scrutinizing all new recurring SaaS "
+                        "commitments, and we need clear downside protection.\n"
+                        "Alice Morgan: That makes total sense, Miriam. To ensure complete budget certainty and eliminate downside risk, we "
+                        "structure enterprise agreements into phased quarterly payments of forty thousand dollars. Furthermore, we include an "
+                        "enforceable ninety-day contractual ROI guarantee: if our platform does not uncover at least fifty thousand dollars in "
+                        "verified annualized cloud waste during the first quarter, Vanguard has the contractual right to terminate without penalty.\n"
+                        "Miriam Ross: A contractual ROI guarantee paired with forty thousand dollar quarterly billing gives finance the exact "
+                        "protection we require. It converts an unhedged software expense into a self-funding performance contract.\n"
+                        "Alice Morgan: I promise to send the formalized agreement with the quarterly schedule and the ROI guarantee clause to "
+                        "your inbox by Wednesday."
+                    ),
+                },
+                {
+                    "call_no": 4,
+                    "date": "2026-09-12",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Miriam Ross (VP Finance)",
+                        "Arthur Pendelton (VP Enterprise Architecture)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good afternoon Miriam and Arthur. Thank you for reconnecting to finalize our partnership.\n"
+                        "Arthur Pendelton: I will give the architecture update first. Chloe's team completed the sandbox verification. The "
+                        "agentless GCP connector was configured in less than thirty minutes, and cost metrics were populating our Datadog "
+                        "environment before lunchtime. There was zero CPU impact on our retail transaction workloads.\n"
+                        "Miriam Ross: That technical validation confirmed Arthur's endorsement. On the finance side, our corporate controller "
+                        "reviewed the agreement. The forty thousand dollar quarterly billing structure fits neatly within our operating budget, "
+                        "and legal approved the ninety-day ROI guarantee language as drafted. We have full executive sign-off.\n"
+                        "Alice Morgan: That is fantastic news, Miriam. We are thrilled to partner with Vanguard Retail Systems to streamline your "
+                        "cloud infrastructure efficiency.\n"
+                        "Miriam Ross: I have signed the order form through DocuSign. Thank you Alice for working collaboratively with both our "
+                        "engineering architecture constraints and our financial governance requirements."
+                    ),
+                },
+            ],
+        },
+        {
+            "id": "deal-4",
+            "company": "Beacon Health Analytics",
+            "value": 310000,
+            "outcome": "lost",
+            "calls": [
+                {
+                    "call_no": 1,
+                    "date": "2026-07-06",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Tyler Robinson (Head of Data Infrastructure)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Hi Tyler, thanks for meeting today. I would love to understand Beacon Health's data infrastructure and "
+                        "what challenges you are facing with cloud compute costs.\n"
+                        "Tyler Robinson: Thanks Alice. Beacon processes genomic sequencing datasets and clinical trial analytics for pharmaceutical "
+                        "clients on AWS and Snowflake. Our analytical workloads consume immense compute power, particularly high-memory GPU "
+                        "clusters and multi-node Redshift clusters. Our monthly cloud expenditure recently surpassed six hundred thousand dollars. "
+                        "Our data engineering teams frequently spin up massive spot instances and forget to terminate them over weekends. I am "
+                        "looking for a platform that can automate resource shutdown and provide granular cost tagging across research teams.\n"
+                        "Alice Morgan: That scale of genomic processing is where our automated governance delivers massive value. We identify "
+                        "zombie clusters and idle GPU instances within minutes of inactivity.\n"
+                        "Tyler Robinson: That capability sounds like exactly what we need. However, because we operate in digital health, our "
+                        "Chief Compliance Officer and CFO must rigorously vet any external technology partner before we move forward.\n"
+                        "Alice Morgan: Completely understood, Tyler. I promise to send our enterprise capability brochure and data governance overview "
+                        "by Thursday afternoon."
+                    ),
+                },
+                {
+                    "call_no": 2,
+                    "date": "2026-07-15",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Tyler Robinson (Head of Data Infrastructure)",
+                        "Dr. Aris Thorne (Chief Compliance Officer)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good afternoon Tyler, and welcome Dr. Thorne. Thank you for joining our discussion on data governance.\n"
+                        "Dr. Aris Thorne: Hello Alice. In healthcare analytics, compliance is non-negotiable. Beacon is governed by HIPAA, "
+                        "HITECH, and FDA clinical data regulations. Any third-party software connecting to our cloud accounts must execute a "
+                        "custom Business Associate Agreement with unlimited audit rights, indemnification against breach liabilities, and proof "
+                        "of isolated tenant data encryption. Can you provide custom BAA agreements and commit your security leadership to a formal "
+                        "review session with our compliance committee?\n"
+                        "Alice Morgan: Our cloud platform is hosted on AWS with standard enterprise encryption and we provide a standard click-through "
+                        "BAA addendum. Most of our commercial customers find our standard security terms and automated dashboard sufficient for "
+                        "their compliance needs without requiring custom legal modifications.\n"
+                        "Dr. Aris Thorne: Standard click-through terms are unacceptable when handling protected health information. We require "
+                        "direct engagement with your security architects and customized legal terms. If your organization is unwilling to invest "
+                        "in a dedicated compliance review, Beacon cannot consider this product.\n"
+                        "Alice Morgan: I will check with our legal department to see if standard exceptions can be made."
+                    ),
+                },
+                {
+                    "call_no": 3,
+                    "date": "2026-07-24",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Tyler Robinson (Head of Data Infrastructure)",
+                        "Brenda Castillo (Chief Financial Officer)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Hello Tyler, and welcome Brenda. Thank you for making time to discuss our commercial proposal.\n"
+                        "Brenda Castillo: Hi Alice. I am reviewing the commercial quote for three hundred and ten thousand dollars. That is an "
+                        "extraordinarily large upfront capital commitment, especially since AWS provides native Cost Explorer tools at zero "
+                        "additional cost. Tyler mentioned that your software could deliver efficiency, but our executive committee requires "
+                        "a phased pilot or quarterly billing milestones to de-risk investments of this magnitude. Can we start with a smaller "
+                        "scoped pilot before committing to a full three hundred and ten thousand dollar annual license?\n"
+                        "Alice Morgan: Our enterprise pricing tier is structured as an annual upfront agreement of three hundred and ten thousand "
+                        "dollars to unlock our complete machine learning forecasting models and dedicated customer success engineering. We find "
+                        "that customers achieve the greatest return when they commit fully to the enterprise platform upfront.\n"
+                        "Brenda Castillo: Alice, committing three hundred and ten thousand dollars upfront without a phased ramp or proof-of-concept "
+                        "concessions is impossible under our current financial governance guidelines, particularly while compliance concerns "
+                        "remain unresolved.\n"
+                        "Alice Morgan: I will review our enterprise discounting options with my sales manager and see what we can offer."
+                    ),
+                },
+                {
+                    "call_no": 4,
+                    "date": "2026-08-04",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Brenda Castillo (Chief Financial Officer)",
+                        "Dr. Aris Thorne (Chief Compliance Officer)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good afternoon Brenda and Dr. Thorne. Thank you for convening today for our follow-up discussion.\n"
+                        "Dr. Aris Thorne: Alice, following our previous call, our compliance committee reviewed your standard BAA and security "
+                        "documentation. Because your team declined to schedule a dedicated security architecture review or accommodate our "
+                        "mandatory HIPAA liability terms, our compliance committee has formally issued an executive veto against onboarding "
+                        "your platform.\n"
+                        "Brenda Castillo: In addition to the compliance veto, finance cannot support a three hundred and ten thousand dollar upfront "
+                        "capital commitment without a de-risked pilot or flexible quarterly payment structure. Because your sales team was unable "
+                        "to adapt to our commercial governance requirements, we have decided to build internal cost-monitoring scripts using AWS "
+                        "native APIs and our existing Snowflake telemetry.\n"
+                        "Alice Morgan: I understand your position, Brenda and Dr. Thorne. We regret that our standard enterprise structure did not "
+                        "align with Beacon's requirements at this time.\n"
+                        "Brenda Castillo: We appreciate your initial presentations, but Beacon Health is officially closing this procurement file."
+                    ),
+                },
+            ],
+        },
+        {
+            "id": "deal-5",
+            "company": "Meridian Logistics Network",
+            "value": 85000,
+            "outcome": "lost",
+            "calls": [
+                {
+                    "call_no": 1,
+                    "date": "2026-07-12",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Greg Hoffman (DevOps Lead)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Hi Greg, thanks for joining today. I would love to hear about Meridian's infrastructure and where you are "
+                        "experiencing challenges with cloud costs.\n"
+                        "Greg Hoffman: Hi Alice. Meridian runs overland freight dispatch across three cloud regions on AWS and Azure Kubernetes "
+                        "clusters. Our infrastructure bill runs about ninety thousand dollars a month. The challenge is that our engineering teams "
+                        "deploy microservices rapidly without cost tagging. When the bill arrives, management asks why cluster spending spiked, "
+                        "and we spend days digging through cloud logs. Your automated pod rightsizing and cost attribution features caught my "
+                        "attention as a potential fix.\n"
+                        "Alice Morgan: Automated pod attribution is exactly what we specialize in. We show engineers the direct financial impact "
+                        "of their resource limits right inside their deployment pipelines.\n"
+                        "Greg Hoffman: That would be a huge win for DevOps. I want to bring in our Director of IT Operations, though he is very "
+                        "protective of our existing monitoring tools.\n"
+                        "Alice Morgan: Understood, Greg. I promise to send over a product one-pager highlighting our automated Kubernetes attribution "
+                        "features by Wednesday afternoon."
+                    ),
+                },
+                {
+                    "call_no": 2,
+                    "date": "2026-07-20",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Greg Hoffman (DevOps Lead)",
+                        "Walter Sterling (Director of IT Operations)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good morning Greg, and welcome Walter. Thank you for joining to explore our FinOps platform.\n"
+                        "Walter Sterling: Hello Alice. Let me get right to the point. Meridian already has an enterprise license with AppDynamics "
+                        "that runs through March of next year, eight months from now. AppDynamics handles our application performance monitoring. "
+                        "I cannot justify paying eighty-five thousand dollars for an overlapping tool while we are still paying for AppDynamics. "
+                        "Furthermore, our engineers do not have bandwidth to learn another monitoring interface.\n"
+                        "Alice Morgan: AppDynamics is fundamentally an APM tool, Walter, whereas our platform is purpose-built for FinOps and cloud "
+                        "cost optimization. Many legacy APM tools fail to provide granular Kubernetes cost visibility.\n"
+                        "Walter Sterling: Calling our existing tools legacy doesn't change our contract reality, Alice. We are not paying double "
+                        "licensing fees. Unless your company can offer contract buyout credits or transitional onboarding support to offset our "
+                        "remaining AppDynamics term, this is a complete non-starter for my department.\n"
+                        "Alice Morgan: We do not typically offer contract buyouts, Walter, but our ROI often justifies the investment."
+                    ),
+                },
+                {
+                    "call_no": 3,
+                    "date": "2026-07-29",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Walter Sterling (Director of IT Operations)",
+                        "Sandra Bullock-Cole (Procurement Manager)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good afternoon Walter, and welcome Sandra. Thank you for taking time to discuss Meridian's procurement requirements.\n"
+                        "Sandra Bullock-Cole: Hello Alice. Walter briefed procurement on the proposed eighty-five thousand dollar annual contract. "
+                        "Our executive leadership has instituted strict procurement controls on all software spend. We have an operational policy "
+                        "prohibiting overlapping SaaS subscriptions unless the incoming vendor provides transitional billing relief, deferred "
+                        "invoicing until the incumbent contract expires, or a phased pilot structure. Can you defer invoicing until our AppDynamics "
+                        "contract concludes in March?\n"
+                        "Alice Morgan: Our finance policy requires standard net thirty billing upon contract execution for the full eighty-five "
+                        "thousand dollar annual term. We cannot defer billing for eight months or absorb incumbent contract liabilities.\n"
+                        "Sandra Bullock-Cole: Then I must be direct, Alice. Procurement cannot authorize eighty-five thousand dollars of duplicate "
+                        "software expenditure under our current fiscal mandate without transitional commercial concessions.\n"
+                        "Alice Morgan: I understand your constraints, Sandra. I will check with our executive team, but our billing terms are "
+                        "generally fixed."
+                    ),
+                },
+                {
+                    "call_no": 4,
+                    "date": "2026-08-08",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Sandra Bullock-Cole (Procurement Manager)",
+                        "Walter Sterling (Director of IT Operations)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good morning Sandra and Walter. Thank you for reconnecting with me today for our scheduled "
+                        "status check regarding the FinOps proposal.\n"
+                        "Sandra Bullock-Cole: Good morning Alice. Our procurement committee convened with IT leadership to review "
+                        "our enterprise vendor roadmap for the upcoming fiscal quarters. Because your organization could not provide "
+                        "contract buyout relief, deferred invoicing, or a phased pilot to bridge our remaining AppDynamics contract, "
+                        "procurement has formally rejected the purchase requisition.\n"
+                        "Walter Sterling: In fact, AppDynamics offered to bundle cloud infrastructure monitoring directly into our "
+                        "upcoming annual renewal at a substantial twenty percent discount. Executing that bundled renewal avoids any "
+                        "duplicate spending, eliminates integration friction for our engineering teams, and keeps our operational "
+                        "vendor footprint completely consolidated.\n"
+                        "Alice Morgan: Thank you for the direct and transparent feedback, Walter and Sandra. I understand that our "
+                        "standard commercial structure could not accommodate the contract overlap with AppDynamics.\n"
+                        "Sandra Bullock-Cole: We certainly appreciate the time you spent demonstrating the platform, but Meridian "
+                        "Logistics is officially closing this procurement file and proceeding with our incumbent renewal."
+                    ),
+                },
+            ],
+        },
+        {
+            "id": "deal-6",
+            "company": "Solaria Renewable Tech",
+            "value": 120000,
+            "outcome": None,
+            "calls": [
+                {
+                    "call_no": 1,
+                    "date": "2026-09-04",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Maya Lin (Head of Platform Engineering)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Hi Maya, thank you for connecting today. I am excited to learn about Solaria's clean tech infrastructure "
+                        "and your goals around cloud cost intelligence.\n"
+                        "Maya Lin: Thanks Alice. Solaria manages solar grid forecasting and distributed IoT inverter telemetry across North America "
+                        "and Europe. We run our telemetry pipelines on Google Cloud Platform and Snowflake. Our cloud bill has expanded to roughly "
+                        "one hundred and twenty thousand dollars a month. Our primary cost drivers are continuous BigQuery analytics queries and "
+                        "massive uncompressed cold storage archives in Google Cloud Storage. Our platform engineers lack automated tooling to identify "
+                        "inefficient query patterns or enforce automated storage lifecycle policies.\n"
+                        "Alice Morgan: That combination of BigQuery slot usage and GCS cold storage lifecycle management is an area where our "
+                        "automated FinOps policies excel. We identify query slot contention and automate storage tier transitions without impacting "
+                        "telemetry ingest.\n"
+                        "Maya Lin: That would save our infrastructure team hours of manual troubleshooting. I want to champion this evaluation, "
+                        "though our Finance Director and Legal Counsel will need to review the commercial structure and data handling.\n"
+                        "Alice Morgan: Absolutely. I promise to deliver a tailored BigQuery optimization benchmark model by next Friday."
+                    ),
+                },
+                {
+                    "call_no": 2,
+                    "date": "2026-09-15",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Maya Lin (Head of Platform Engineering)",
+                        "Gordon Hayes (Finance Director)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good afternoon Maya, and welcome Gordon. Thank you for joining to discuss Solaria's FinOps investment.\n"
+                        "Gordon Hayes: Hello Alice. Maya demonstrated the BigQuery optimization capabilities, which look technically sound. "
+                        "However, from a financial perspective, committing to a one hundred and twenty thousand dollar annual software contract "
+                        "requires strict budget alignment. Our clean tech operations operate on disciplined cash flow, and our Q3 capital budget "
+                        "cannot accommodate a six-figure lump-sum outlay. What flexibility do you offer on commercial payment schedules?\n"
+                        "Alice Morgan: We understand the importance of cash flow predictability, Gordon. Rather than requiring an annual upfront "
+                        "prepayment, we can structure the agreement into four quarterly installments of thirty thousand dollars each. Furthermore, "
+                        "we pair that with an implementation milestone guarantee that ensures projected savings materialize before your second "
+                        "quarterly invoice.\n"
+                        "Maya Lin: That phased quarterly schedule allows engineering to demonstrate storage lifecycle savings before Gordon's team "
+                        "faces subsequent payments.\n"
+                        "Gordon Hayes: Amortizing the agreement into thirty thousand dollar quarterly installments satisfies my budget constraints. "
+                        "If legal approves the terms, finance is prepared to support this.\n"
+                        "Alice Morgan: I promise to prepare the draft order form reflecting thirty thousand dollar quarterly terms by Thursday."
+                    ),
+                },
+                {
+                    "call_no": 3,
+                    "date": "2026-09-24",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Maya Lin (Head of Platform Engineering)",
+                        "Lisa Ray (Corporate Legal Counsel)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Hello Maya, and welcome Lisa. Thank you for taking time to discuss Solaria's compliance and data governance review.\n"
+                        "Lisa Ray: Good afternoon Alice. Solaria captures sensitive grid telemetry and smart meter device data. Our legal department "
+                        "maintains strict standards regarding third-party vendors. We require SOC 2 Type II certification, a comprehensive Data "
+                        "Processing Agreement incorporating GDPR and California privacy clauses, and a liability indemnity cap that covers "
+                        "potential regulatory penalties. Additionally, we need confirmation that our telemetry data is never retained or used for "
+                        "external model training.\n"
+                        "Alice Morgan: I can confirm unequivocally that we never retain customer telemetry or use proprietary datasets for model "
+                        "training. We operate as an isolated SaaS analytics provider. I will provide our SOC 2 Type II audit dossier, our standard "
+                        "enterprise DPA, and our security architecture whitepaper for your team's immediate review.\n"
+                        "Lisa Ray: That addresses our primary data governance requirements. If your enterprise DPA includes our standard mutual "
+                        "indemnification provisions, legal will expedite the contract redlines.\n"
+                        "Alice Morgan: I promise to deliver our SOC 2 documentation and annotated enterprise DPA to your inbox by Monday morning."
+                    ),
+                },
+                {
+                    "call_no": 4,
+                    "date": "2026-10-02",
+                    "participants": [
+                        "Alice Morgan (Sales Rep)",
+                        "Gordon Hayes (Finance Director)",
+                        "Lisa Ray (Corporate Legal Counsel)",
+                        "Maya Lin (Head of Platform Engineering)",
+                    ],
+                    "transcript": (
+                        "Alice Morgan: Good afternoon Maya, Gordon, and Lisa. Thank you all for joining our commercial alignment session.\n"
+                        "Maya Lin: Engineering has finished our technical validation in staging. The BigQuery cost analyzer identified thirty "
+                        "thousand dollars in recurring query optimizations across our grid prediction pipelines with zero latency impact.\n"
+                        "Gordon Hayes: That technical result directly supports the thirty thousand dollar quarterly billing structure Alice outlined. "
+                        "Finance has allocated the budget for the initial quarterly invoice and is ready to sign upon legal completion.\n"
+                        "Lisa Ray: Legal has completed initial redlines on the enterprise Data Processing Agreement and mutual NDA. The SOC 2 Type II "
+                        "report and data residency clauses satisfied our InfoSec committee. We are currently finalizing language around mutual "
+                        "liability caps and expect to conclude legal negotiations by early next week.\n"
+                        "Alice Morgan: That is outstanding progress. Our team is fully committed to supporting Lisa with any remaining clause "
+                        "adjustments so we can finalize the contract.\n"
+                        "Gordon Hayes: Excellent. We look forward to executing the agreement once Lisa confirms the final redline revisions."
+                    ),
+                },
+            ],
+        },
+    ]
+
+    demo_call_5 = {
+        "call_no": 5,
+        "date": "2026-10-14",
+        "participants": [
+            "Alice Morgan (Sales Rep)",
+            "Sarah Jenkins (Chief Financial Officer)",
+            "David Chen (VP Infrastructure & Engineering)",
+            "Frank Morales (Head of Strategic Procurement)",
+        ],
+        "transcript": (
+            "Alice Morgan: Good afternoon everyone. Thank you Sarah, David, and Frank for convening today. I know our two primary open items "
+            "from last week were the quarterly commercial terms and the outstanding security documentation.\n"
+            "Frank Morales: Good to be here Alice. Yes, that SOC 2 report was our prerequisite before InfoSec would even open the technical review ticket.\n"
+            "Alice Morgan: Understood Frank. Prior to this call, I uploaded our complete, unmodified SOC 2 Type II audit report, our ISO 27001 "
+            "certificate, and our least-privilege Terraform IAM policy template directly to your vendor portal.\n"
+            "Frank Morales: Excellent. Our security analyst just confirmed receipt of the dossier and noted that the read-only IAM policy satisfies "
+            "our data residency requirements. The InfoSec flag is officially cleared.\n"
+            "Sarah Jenkins: That's great news on the compliance front. Now let's address the numbers. Does the revised order form reflect quarterly billing?\n"
+            "Alice Morgan: Exactly as requested, Sarah. The total contract remains one hundred and eighty thousand dollars, but it is structured "
+            "into four quarterly payments of forty-five thousand dollars, billed net thirty. The first payment falls squarely within your Q3 "
+            "executive signing authority.\n"
+            "David Chen: That solves the board approval delay and gives engineering immediate access to start rightsizing our Kubernetes clusters.\n"
+            "Sarah Jenkins: Outstanding work, Alice. With security satisfied and the quarterly terms fitting our budget threshold, I am ready to approve. "
+            "Send over the final order form and we will execute this week."
+        ),
+    }
+
+    base_dir = Path(__file__).resolve().parent
+    deals_file = base_dir / "deals.json"
+    demo_file = base_dir / "demo_call_5.json"
+
+    deals_file.write_text(json.dumps(deals, indent=2), encoding="utf-8")
+    demo_file.write_text(json.dumps(demo_call_5, indent=2), encoding="utf-8")
+
+    print(f"Generated {deals_file} with {len(deals)} deals.")
+    print(f"Generated {demo_file}.")
+
+
+if __name__ == "__main__":
+    generate_data()

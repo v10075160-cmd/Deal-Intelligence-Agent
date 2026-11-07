@@ -1,0 +1,11 @@
+{
+  "call_no": 5,
+  "date": "2026-10-14",
+  "participants": [
+    "Alice Morgan (Sales Rep)",
+    "Sarah Jenkins (Chief Financial Officer)",
+    "David Chen (VP Infrastructure & Engineering)",
+    "Frank Morales (Head of Strategic Procurement)"
+  ],
+  "transcript": "Alice Morgan: Good afternoon everyone. Thank you Sarah, David, and Frank for convening today. I know our two primary open items from last week were the quarterly commercial terms and the outstanding security documentation.\nFrank Morales: Good to be here Alice. Yes, that SOC 2 report was our prerequisite before InfoSec would even open the technical review ticket.\nAlice Morgan: Understood Frank. Prior to this call, I uploaded our complete, unmodified SOC 2 Type II audit report, our ISO 27001 certificate, and our least-privilege Terraform IAM policy template directly to your vendor portal.\nFrank Morales: Excellent. Our security analyst just confirmed receipt of the dossier and noted that the read-only IAM policy satisfies our data residency requirements. The InfoSec flag is officially cleared.\nSarah Jenkins: That's great news on the compliance front. Now let's address the numbers. Does the revised order form reflect quarterly billing?\nAlice Morgan: Exactly as requested, Sarah. The total contract remains one hundred and eighty thousand dollars, but it is structured into four quarterly payments of forty-five thousand dollars, billed net thirty. The first payment falls squarely within your Q3 executive signing authority.\nDavid Chen: That solves the board approval delay and gives engineering immediate access to start rightsizing our Kubernetes clusters.\nSarah Jenkins: Outstanding work, Alice. With security satisfied and the quarterly terms fitting our budget threshold, I am ready to approve. Send over the final order form and we will execute this week."
+}
