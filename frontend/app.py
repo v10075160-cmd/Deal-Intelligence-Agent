@@ -3,6 +3,7 @@
 Frontend dashboard communicating strictly with the backend via frontend/api.py.
 Features:
 - Sidebar navigation: Deal Workspace & Playbook Bank
+- High-contrast card styling safe for both dark and light modes (#1e293b dark slate with #f8fafc text)
 - Pre-Call Brief with prominent MEMORY ON/OFF toggle
 - 'What the agent remembered' recalled-facts panel (active only when memory is ON)
 - 'Learned from past deals' playbook tips in deal briefs
@@ -33,16 +34,28 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS for executive enterprise look
+# Custom CSS for high-contrast enterprise look (dark mode & light mode safe)
 st.markdown(
     """
     <style>
+    /* High contrast dark-slate card styles for optimal visibility across all themes */
     .metric-card {
-        background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
+        background-color: #1e293b;
+        color: #f8fafc;
+        border: 1px solid #334155;
         border-radius: 8px;
         padding: 14px 16px;
         margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    .metric-card strong {
+        color: #f8fafc;
+    }
+    .metric-card small {
+        color: #94a3b8;
+    }
+    .metric-card em {
+        color: #cbd5e1;
     }
     .stance-chip {
         display: inline-block;
@@ -54,44 +67,50 @@ st.markdown(
         letter-spacing: 0.5px;
     }
     .stance-champion {
-        background-color: #d1e7dd;
-        color: #0f5132;
-        border: 1px solid #badbcc;
+        background-color: #064e3b;
+        color: #6ee7b7;
+        border: 1px solid #059669;
     }
     .stance-cautious {
-        background-color: #fff3cd;
-        color: #664d03;
-        border: 1px solid #ffecb5;
+        background-color: #78350f;
+        color: #fde68a;
+        border: 1px solid #d97706;
     }
     .stance-skeptic {
-        background-color: #f8d7da;
-        color: #842029;
-        border: 1px solid #f5c2c7;
+        background-color: #7f1d1d;
+        color: #fca5a5;
+        border: 1px solid #dc2626;
     }
     .stance-neutral {
-        background-color: #e2e3e5;
-        color: #41464b;
-        border: 1px solid #d3d6d8;
+        background-color: #334155;
+        color: #e2e8f0;
+        border: 1px solid #475569;
     }
     .recalled-box {
-        background-color: #e8f4fd;
-        border-left: 4px solid #0d6efd;
+        background-color: #0f172a;
+        color: #f8fafc;
+        border-left: 4px solid #3b82f6;
+        border: 1px solid #1e293b;
         border-radius: 6px;
         padding: 12px 16px;
         margin-bottom: 10px;
     }
+    .recalled-box strong {
+        color: #f8fafc;
+    }
     .call-tag {
-        background-color: #0d6efd;
-        color: white;
-        padding: 2px 7px;
+        background-color: #2563eb;
+        color: #ffffff;
+        padding: 2px 8px;
         border-radius: 4px;
         font-size: 0.75rem;
         font-weight: 600;
         margin-right: 6px;
     }
     .memory-badge-on {
-        background-color: #d1e7dd;
-        color: #0f5132;
+        background-color: #064e3b;
+        color: #a7f3d0;
+        border: 1px solid #059669;
         padding: 6px 12px;
         border-radius: 6px;
         font-weight: 600;
@@ -99,8 +118,9 @@ st.markdown(
         margin-bottom: 12px;
     }
     .memory-badge-off {
-        background-color: #f8d7da;
-        color: #842029;
+        background-color: #7f1d1d;
+        color: #fecaca;
+        border: 1px solid #dc2626;
         padding: 6px 12px;
         border-radius: 6px;
         font-weight: 600;
@@ -108,28 +128,55 @@ st.markdown(
         margin-bottom: 12px;
     }
     .email-container {
-        background-color: #ffffff;
-        border: 1px solid #dee2e6;
+        background-color: #1e293b;
+        color: #f8fafc;
+        border: 1px solid #334155;
         border-radius: 8px;
         padding: 20px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         line-height: 1.6;
     }
+    .email-container pre {
+        color: #f8fafc !important;
+    }
     .insight-card {
-        background-color: #ffffff;
-        border: 1px solid #d1e7dd;
-        border-left: 5px solid #198754;
+        background-color: #1e293b;
+        color: #f8fafc;
+        border: 1px solid #059669;
+        border-left: 5px solid #10b981;
         border-radius: 6px;
         padding: 14px 18px;
         margin-bottom: 12px;
     }
+    .insight-card strong {
+        color: #f8fafc;
+    }
+    .insight-card p {
+        color: #e2e8f0;
+    }
+    .insight-card small {
+        color: #94a3b8;
+    }
+    .insight-card em {
+        color: #cbd5e1;
+    }
     .mental-card {
-        background-color: #f8f9fa;
-        border: 1px solid #ced4da;
+        background-color: #1e293b;
+        color: #f8fafc;
+        border: 1px solid #334155;
         border-radius: 8px;
         padding: 16px;
         margin-bottom: 14px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+    }
+    .mental-card h4 {
+        color: #60a5fa !important;
+        margin-top: 0;
+    }
+    .mental-card p {
+        color: #cbd5e1 !important;
+        font-size: 0.9rem;
+        line-height: 1.5;
     }
     </style>
     """,
@@ -265,7 +312,6 @@ with st.sidebar:
             d_id = d.get("deal_id") or d.get("id")
             comp = d.get("company", "Unknown")
             val = d.get("value", 0)
-            # Use local outcome override if updated via outcome form
             outcome = st.session_state.deal_outcomes.get(d_id, d.get("outcome"))
             badge = "WON" if outcome == "won" else ("LOST" if outcome == "lost" else "OPEN")
             deal_options[d_id] = f"{comp} (${val:,.0f}) [{badge}]"
@@ -349,12 +395,12 @@ if st.session_state.current_view == "Playbook Bank":
                         f"""
                         <div class="insight-card">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <strong style="font-size: 1.05rem;">#{idx} Winning Pattern</strong>
-                                <span style="background-color: #d1e7dd; color: #0f5132; font-weight: bold; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">
+                                <strong style="font-size: 1.05rem; color: #f8fafc;">#{idx} Winning Pattern</strong>
+                                <span style="background-color: #064e3b; color: #a7f3d0; border: 1px solid #059669; font-weight: bold; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">
                                     {pct}% Confidence
                                 </span>
                             </div>
-                            <p style="margin: 0; font-size: 0.95rem; line-height: 1.5;">{txt}</p>
+                            <p style="margin: 0; font-size: 0.95rem; line-height: 1.5; color: #e2e8f0;">{txt}</p>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -374,8 +420,8 @@ if st.session_state.current_view == "Playbook Bank":
                     st.markdown(
                         f"""
                         <div class="mental-card">
-                            <h4 style="margin-top: 0; color: #0d6efd;">📘 {name}</h4>
-                            <p style="margin: 0; font-size: 0.9rem; line-height: 1.5; color: #495057;">{summary}</p>
+                            <h4 style="margin-top: 0; color: #60a5fa;">📘 {name}</h4>
+                            <p style="margin: 0; font-size: 0.9rem; line-height: 1.5; color: #cbd5e1;">{summary}</p>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -513,7 +559,7 @@ with tab_brief:
                     st.markdown(
                         f"""
                         <div class="recalled-box">
-                            <span class="call-tag">Call {src_call}</span> <strong>{fact_text}</strong>
+                            <span class="call-tag">Call {src_call}</span> <strong style="color: #f8fafc;">{fact_text}</strong>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -538,8 +584,8 @@ with tab_brief:
                     st.markdown(
                         f"""
                         <div class="metric-card">
-                            <strong>{obj.get('text', '')}</strong><br>
-                            <small>Raised in <strong>Call {obj.get('raised_in_call', '?')}</strong> by <em>{obj.get('by', 'Prospect')}</em></small>
+                            <strong style="color: #f8fafc;">{obj.get('text', '')}</strong><br>
+                            <small style="color: #94a3b8;">Raised in <strong style="color: #e2e8f0;">Call {obj.get('raised_in_call', '?')}</strong> by <em style="color: #cbd5e1;">{obj.get('by', 'Prospect')}</em></small>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -555,8 +601,8 @@ with tab_brief:
                     st.markdown(
                         f"""
                         <div class="metric-card">
-                            <strong>{p.get('text', '')}</strong><br>
-                            <small>Promised by: <em>{p.get('made_by', 'Sales Rep')}</em> | Target Date: <strong>{p.get('due', 'TBD')}</strong></small>
+                            <strong style="color: #f8fafc;">{p.get('text', '')}</strong><br>
+                            <small style="color: #94a3b8;">Promised by: <em style="color: #cbd5e1;">{p.get('made_by', 'Sales Rep')}</em> | Target Date: <strong style="color: #e2e8f0;">{p.get('due', 'TBD')}</strong></small>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -580,11 +626,11 @@ with tab_brief:
                         f"""
                         <div class="metric-card">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                <strong>{s_name}</strong>
+                                <strong style="color: #f8fafc;">{s_name}</strong>
                                 {stance_html}
                             </div>
-                            <small><strong>Role:</strong> {s_role}</small><br>
-                            <small><strong>Primary Concern:</strong> {s_concerns}</small>
+                            <small style="color: #94a3b8;"><strong style="color: #e2e8f0;">Role:</strong> {s_role}</small><br>
+                            <small style="color: #94a3b8;"><strong style="color: #e2e8f0;">Primary Concern:</strong> {s_concerns}</small>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -602,8 +648,8 @@ with tab_brief:
                 st.markdown(
                     f"""
                     <div class="insight-card">
-                        <strong>🎯 Playbook Tip:</strong> {pt.get('tip', '')}<br>
-                        <small style="color: #495057;"><strong>Win-Rate Evidence:</strong> <em>{pt.get('evidence', '')}</em></small>
+                        <strong style="color: #f8fafc;">🎯 Playbook Tip:</strong> <span style="color: #e2e8f0;">{pt.get('tip', '')}</span><br>
+                        <small style="color: #94a3b8;"><strong style="color: #e2e8f0;">Win-Rate Evidence:</strong> <em style="color: #cbd5e1;">{pt.get('evidence', '')}</em></small>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -672,7 +718,7 @@ with tab_compare:
                 st.markdown(
                     f"""
                     <div class="recalled-box">
-                        <span class="call-tag">Call {rf.get('source_call', '?')}</span> {rf.get('fact', '')}
+                        <span class="call-tag">Call {rf.get('source_call', '?')}</span> <strong style="color: #f8fafc;">{rf.get('fact', '')}</strong>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -718,7 +764,7 @@ with tab_followup:
         st.markdown(
             f"""
             <div class="email-container">
-                <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">{cached_email}</pre>
+                <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: #f8fafc;">{cached_email}</pre>
             </div>
             """,
             unsafe_allow_html=True,
@@ -783,9 +829,7 @@ with tab_outcome:
                         objections_handled=selected_handled,
                         notes=outcome_notes.strip(),
                     )
-                    # Update local state
                     st.session_state.deal_outcomes[deal_id] = outcome_choice
-                    # Invalidate playbook cache so new insights load
                     st.session_state.pop("playbook_insights", None)
 
                     st.success(
